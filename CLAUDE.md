@@ -62,6 +62,12 @@ cd web && npm run build          # production build (catches TS errors)
 - `docs/plans/2026-05-20-persona-mvp.md` — task-by-task implementation plan (Tasks 0–19;
   resolved spike findings for explorer API and Reactivity API are recorded inside it).
 
+> **Full detailed reference (READ for any Somnia integration work):**
+> `docs/reference/somnia-agents-guide.md` — the complete official Somnia Agents dev guide
+> (verbatim: agent call flow, 3 base agents + prices, BTC-oracle example, 4 gotcha tips, 5 use
+> cases), plus all spike findings (explorer API, Reactivity API), gas differences, network info,
+> reference repos, and idea-collision notes. The section below is the condensed version.
+
 ## Somnia technical reference (verified)
 
 - Shannon testnet: chainId **50312**, RPC `https://api.infra.testnet.somnia.network`,
