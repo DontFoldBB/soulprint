@@ -175,6 +175,47 @@ per validator) and adds these previously-uncaptured facts:
   (split equally among subcommittee members; remainder rebated to the requester → hence the
   required `receive()`).
 
+### A3. LLM Inference — full function signatures + MCP/on-chain tools (from /agents/base-agents/llm-inference, checked 2026-05-20)
+Exact signatures (previously we only had the names). All four take a final `bool chainOfThought`
+= "whether to enable chain-of-thought reasoning". Supported Solidity types in tool/signature
+strings: `string`, `bool`, `address`, `uint256`, `bytes`, and arrays thereof.
+
+```solidity
+function inferString(string prompt, string system, bool chainOfThought, string[] allowedValues)
+    returns (string response);                       // single-turn; allowedValues constrains output
+function inferNumber(string prompt, string system, int256 minValue, int256 maxValue, bool chainOfThought)
+    returns (int256 response);                        // integer clamped to [minValue, maxValue]
+function inferChat(string[] roles, string[] messages, bool chainOfThought)
+    returns (string response);                        // multi-turn; roles[i] pairs with messages[i]
+function inferToolsChat(
+    string[] roles, string[] messages,
+    string[] mcpServerUrls,                           // MCP servers; agent fetches their tools at runtime
+    OnchainTool[] onchainTools,                       // struct OnchainTool { string signature; string description; }
+    uint256 maxIterations,                            // caps tool round-trips
+    bool chainOfThought
+) returns (
+    string finishReason,                              // "stop" | "tool_calls" | ...
+    string response,
+    string[] updatedRoles, string[] updatedMessages,  // conversation grown by the agent
+    string[] pendingToolCallIds, bytes[] pendingToolCalls   // on-chain calls to execute when finishReason=="tool_calls"
+);
+```
+
+**MCP tools (Automatic):** pass server URLs; the LLM calls a tool → the agent forwards to the MCP
+server, feeds the result back to the LLM, and loops until done. Fully handled inside the agent —
+nothing for our contract to do; results just flow back into context.
+
+**On-chain tools (Yield & Resume):** yielded back as ABI-encoded calldata. When
+`finishReason == "tool_calls"`, OUR contract executes each `pendingToolCalls[i]`, then resumes by
+appending, for each, a `role="tool"` message with content
+`{"tool_call_id": ids[i], "content": "<result>"}`, and calls `inferToolsChat` again in a loop until
+`finishReason == "stop"`. (Soulprint doesn't need on-chain tools today — `inferString` with
+`allowedValues` is enough for the archetype — but this is the path if we ever let the dossier
+trigger on-chain actions.)
+
+Model version / temperature / seed / token-limit / price are NOT on this page (they live on the
+overview/quickstart — we have them: Qwen3-30B, temp 0, fixed seed, 0.07 STT/validator).
+
 ---
 
 ## B. Verified interface (in repo at contracts/interfaces/ISomniaAgents.sol)
