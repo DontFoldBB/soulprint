@@ -1531,11 +1531,22 @@ Then fetch and record the interface from:
 Record in this step: the import path / contract for `subscribe`/cron, the `SubscriptionFilter`/`SubscriptionOptions` shapes, the precompile/owner-balance requirement (docs mention a min native balance for on-chain reactivity), and the callback signature the scheduler invokes.
 
 ```
-REACTIVITY FINDINGS (fill in):
-- subscribe entry: ____________________
-- cron/interval API: __________________
-- owner min balance requirement: ______
-- scheduler callback shape: ___________
+REACTIVITY FINDINGS (resolved 2026-05-20, from docs):
+- package: @somnia-chain/reactivity-contracts
+- base contract: SomniaEventHandler; override _onEvent(address emitter, bytes32[] eventTopics, bytes data)
+- precompile: 0x0100 (SomniaExtensions.SOMNIA_REACTIVITY_PRECOMPILE_ADDRESS)
+- scheduled (NOT recurring cron — one-shot at a point in time; self-reschedule for recurrence):
+    scheduleSubscriptionAtTimestamp(handler, timestampMillis, options)
+    scheduleSubscriptionAtBlock(handler, blockNumber, options)
+    scheduleSubscriptionAtEpoch(handler, epochNumber, options)
+    unsubscribe(subscriptionId)
+- callback: onEvent(address,bytes32[],bytes); inside it msg.sender == 0x0100, tx.origin == subscription owner
+- SubscriptionOptions { uint64 priorityFeePerGas; uint64 maxFeePerGas; uint64 gasLimit; }
+- ** MIN BALANCE 32 SOMI/STT to CREATE a subscription ** (checked at creation; not escrowed/consumed)
+- IMPLICATION: contract must hold >=32 STT to subscribe. Recurring "monthly" = self-reschedule
+  the next scheduleSubscriptionAtTimestamp from inside the handler (SomMemo one-shot pattern).
+- Funding need grows: ~32 STT (subscription floor) + agent-call reserve + deploy gas. Request a
+  larger STT top-up via Somnia Discord #dev-chat / developers@somnia.foundation.
 ```
 
 - [ ] **Step 2: Write `ISomniaReactivity.sol`** from the spike findings (exact interface), then build (`npx hardhat compile`).

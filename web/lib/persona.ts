@@ -1,5 +1,5 @@
 // Set this to the deployed Persona contract address after running scripts/deploy.ts
-export const PERSONA_ADDRESS = "0xPASTE_DEPLOYED_ADDRESS" as `0x${string}`;
+export const PERSONA_ADDRESS = "0x0b8912155847fc7c1570e0dd5cd37fe0837966a1" as `0x${string}`;
 
 // Minimal ABI used by the frontend.
 export const PERSONA_ABI = [
@@ -64,7 +64,7 @@ export function parseDossier(raw: string): Dossier {
       case "STYLE": out.style = value.replace(/^"|"$/g, ""); break;
       case "KARMA": out.karma = value; break;
       case "NOTES": out.notes = value; break;
-      case "RARITY": out.rarity = value; break;
+      case "RARITY": out.rarity = value.match(/\d+/)?.[0] ?? value; break;
     }
   }
   return out;

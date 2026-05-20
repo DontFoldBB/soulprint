@@ -133,8 +133,10 @@ contract Persona is ERC721 {
             "Wallet: ", Strings.toHexString(uint160(wallet), 20),
             "\nOn-chain stats (Somnia Shannon testnet):",
             "\n- Total transactions: ", Strings.toString(txCount),
-            "\n\nWrite the dossier in EXACTLY this format:\n"
-            "TYPE: <archetype>, Type <I-V>\n"
+            "\n\nWrite the dossier in EXACTLY this format. TYPE must be a made-up 2-4 word "
+            "archetype NAME (invent one, e.g. 'The Ghost', 'Serial Aper', 'Gas Goblin'), "
+            "then a comma, then 'Type' and a roman numeral I-V:\n"
+            "TYPE: <archetype name>, Type <I-V>\n"
             "STRENGTH: <one line>\n"
             "WEAKNESS: <one line>\n"
             "STYLE: \"<short quote>\"\n"
@@ -175,7 +177,7 @@ contract Persona is ERC721 {
             tokenId = ++totalPersonas;
             personaOf[ctx.wallet] = tokenId;
             registeredWallets.push(ctx.wallet);
-            _safeMint(ctx.wallet, tokenId);
+            _mint(ctx.wallet, tokenId); // _mint (not _safeMint): personas may target contract addresses too; token is soulbound
             emit PersonaMinted(ctx.wallet, tokenId);
             emit Locked(tokenId);
 

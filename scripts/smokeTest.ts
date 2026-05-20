@@ -1,0 +1,37 @@
+import hre from "hardhat";
+import { parseEther } from "viem";
+
+const PERSONA = "0x0b8912155847fc7c1570e0dd5cd37fe0837966a1";
+
+async function main() {
+  const [wallet] = await hre.viem.getWalletClients();
+  const pub = await hre.viem.getPublicClient();
+  const persona = await hre.viem.getContractAt("Persona", PERSONA);
+
+  const target = wallet.account.address; // burner EOA (now has some history)
+  console.log("Reading wallet:", target);
+
+  const hash = await persona.write.read([target], { value: parseEther("1") });
+  console.log("read() tx:", hash);
+  await pub.waitForTransactionReceipt({ hash });
+  console.log("Confirmed. Waiting for agent callbacks (JSON API + LLM)...");
+
+  for (let i = 0; i < 60; i++) {
+    const tokenId = await persona.read.personaOf([target]);
+    if (tokenId > 0n) {
+      const dossier = await persona.read.dossier([tokenId]);
+      if (dossier && dossier.length > 0) {
+        console.log(`\n=== DOSSIER (tokenId ${tokenId}, ${i * 3}s) ===\n`);
+        console.log(dossier);
+        console.log("\n=== tokenURI ===");
+        console.log((await persona.read.tokenURI([tokenId])).slice(0, 120) + "...");
+        return;
+      }
+    }
+    process.stdout.write(`.${i * 3}s `);
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  console.log("\nTimed out. Check events on the explorer for ReadFailed.");
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });
