@@ -10,7 +10,7 @@
 
 > **Toolchain note (2026-05-20):** The spec/plan originally specified Foundry for tighter TDD, but Foundry is not installed and its `curl | bash` installer is blocked in this environment. Pivoted to **Hardhat**, which runs on the already-present Node/npm and matches our reference repo (Kali-Decoder). The Solidity contract code in every task below is unchanged; the test files become TypeScript (Hardhat + viem) and deployment uses a TS script instead of `forge script`. Test logic is identical: deploy `MockAgentPlatform` + `Persona`, call `read()`, then call `platform.deliver()` to simulate agent callbacks, and assert state.
 
-**Scope:** This plan is the MVP foundation only. Cron-Reactivity evolution, the Data Streams gallery, and rarity rewards are deferred to a follow-up plan written after this foundation is deployed and working.
+**Scope:** Tasks 0–17 are the foundation (read → dossier → soulbound mint → deploy → frontend). Tasks 18–19 add the **autonomy + agent-composability** layer (agent-callable entry point + Cron-Reactivity self-evolution), promoted into core scope on 2026-05-20 because the official judging rubric weights *Agent-First Design* and *Autonomous Performance* heavily. The Data Streams gallery, rarity rewards, and SVG art remain deferred stretch items.
 
 ---
 
@@ -1432,6 +1432,155 @@ MVP: read → dossier → soulbound mint, deployed on testnet. Next: Cron evolut
 git add README.md
 git commit -m "docs: project README"
 ```
+
+---
+
+## Task 18: Agent-callable entry point + composability (Agent-First Design)
+
+**Files:**
+- Modify: `contracts/Persona.sol`
+- Modify: `test/Persona.test.ts`
+
+Goal: make PERSONA something other contracts/agents can invoke and read, not just a human UI. Add a discoverable event on every request and a composable view that returns a wallet's whole profile in one call.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/Persona.test.ts`:
+```ts
+it("exposes a composable profileOf for other contracts/agents", async () => {
+  const { persona, platform, user } = await deploy();
+  await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+  await platform.write.deliver([1n, statsResult(87n), Success]);
+  await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+  const p = await persona.read.profileOf([user.account.address]);
+  // [tokenId, dossier, generation]
+  expect(p[0]).to.equal(1n);
+  expect(p[1]).to.equal(SAMPLE_DOSSIER);
+  expect(p[2]).to.equal(1n);
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx hardhat test 2>&1 | tail -20`
+Expected: FAIL — `profileOf` does not exist.
+
+- [ ] **Step 3: Implement event + view**
+
+Add an event near the others:
+```solidity
+    event ProfileRequested(address indexed requester, address indexed wallet);
+```
+Emit it inside `read` (after the dedup check) and inside `reread` (after the owner check):
+```solidity
+        emit ProfileRequested(msg.sender, wallet); // in read(), `wallet` is the arg
+```
+```solidity
+        emit ProfileRequested(msg.sender, owner);  // in reread(), `owner` from _requireOwned
+```
+Add the composable view:
+```solidity
+    /// @notice One-call profile read for other contracts/agents to compose on.
+    function profileOf(address wallet)
+        external
+        view
+        returns (uint256 tokenId, string memory dossierText, uint256 gen)
+    {
+        tokenId = personaOf[wallet];
+        if (tokenId != 0) {
+            dossierText = dossier[tokenId];
+            gen = generation[tokenId];
+        }
+    }
+```
+
+- [ ] **Step 4: Run tests to verify pass**
+
+Run: `npx hardhat test 2>&1 | tail -20`
+Expected: all PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add contracts/Persona.sol test/Persona.test.ts
+git commit -m "feat: agent-callable ProfileRequested event + composable profileOf view"
+```
+
+---
+
+## Task 19: Cron-Reactivity autonomous self-evolution (Autonomous Performance)
+
+This is the project's core autonomy feature: the contract re-reads and rewrites dossiers on a schedule with no human and no off-chain keeper.
+
+**Files:**
+- Create: `scripts/checkReactivityApi.mjs` (spike)
+- Modify: `contracts/Persona.sol`
+- Create: `contracts/interfaces/ISomniaReactivity.sol`
+
+- [ ] **Step 1: Spike — pin down the Reactivity subscription API**
+
+The exact `SomniaExtensions` / cron-subscription interface must be confirmed before coding (it is a network feature, not unit-testable with the mock). Read the live docs and a working example:
+```bash
+node scripts/checkExplorerApi.mjs >/dev/null 2>&1 # (already have node)
+```
+Then fetch and record the interface from:
+- https://docs.somnia.network/developer/reactivity (cron subscription section)
+- a working repo, e.g. https://github.com/local-optimum/reactive-stt-faucet or https://github.com/0xpochita/SomMemo (cron one-shot pattern)
+
+Record in this step: the import path / contract for `subscribe`/cron, the `SubscriptionFilter`/`SubscriptionOptions` shapes, the precompile/owner-balance requirement (docs mention a min native balance for on-chain reactivity), and the callback signature the scheduler invokes.
+
+```
+REACTIVITY FINDINGS (fill in):
+- subscribe entry: ____________________
+- cron/interval API: __________________
+- owner min balance requirement: ______
+- scheduler callback shape: ___________
+```
+
+- [ ] **Step 2: Write `ISomniaReactivity.sol`** from the spike findings (exact interface), then build (`npx hardhat compile`).
+
+- [ ] **Step 3: Implement batched `evolveAll()`**
+
+```solidity
+    uint256 public evolveCursor;
+
+    /// @notice Scheduler-invoked. Re-reads a batch of registered wallets.
+    function evolveAll() external {
+        // gate to the reactivity scheduler per spike findings (e.g. require precompile caller)
+        uint256 start = evolveCursor;
+        uint256 end = start + 5 < totalPersonas ? start + 5 : totalPersonas;
+        for (uint256 i = start; i < end; i++) {
+            address w = registeredWallets[i];
+            if (address(this).balance >= 0.6 ether) {
+                _requestStats(w); // reuses the same pipeline; handleDossier updates in place
+            } else {
+                emit EvolutionSkipped(personaOf[w]);
+            }
+        }
+        evolveCursor = end >= totalPersonas ? 0 : end;
+    }
+
+    event EvolutionSkipped(uint256 indexed tokenId);
+```
+Add the cron subscription registration (per spike) in the constructor or an `initEvolution()` owner function.
+
+- [ ] **Step 4: Unit-test the batch logic with the mock scheduler**
+
+Add a test that calls `evolveAll()` directly (simulating the scheduler), delivers the agent callbacks, and asserts `generation` bumped for registered wallets. Run `npx hardhat test`.
+
+- [ ] **Step 5: Deploy + verify autonomous evolution on testnet**
+
+Redeploy, register a couple personas, set the cron interval short (per spike) for the demo, and confirm via `cast`/viem that `generation` increments **with no further human tx**. This live proof is the centerpiece of the demo video.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add contracts/ test/ scripts/checkReactivityApi.mjs
+git commit -m "feat: autonomous Cron-Reactivity self-evolution of dossiers"
+```
+
+> **Risk:** This is the hardest, most network-dependent task. If the Reactivity API can't be wired in time, the fallback for the demo is to drive `evolveAll()` via a thin scheduled call and still show autonomous re-reading — but the goal is genuine on-chain Cron. Budget a full day; do not let it block the Task 0–17 foundation from being submission-ready first.
 
 ---
 

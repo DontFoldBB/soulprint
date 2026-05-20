@@ -45,6 +45,7 @@ contract Persona is ERC721 {
     event PersonaMinted(address indexed wallet, uint256 indexed tokenId);
     event DossierUpdated(uint256 indexed tokenId, uint256 generation);
     event Locked(uint256 tokenId);
+    event ProfileRequested(address indexed requester, address indexed wallet);
 
     constructor(address platform_) ERC721("Persona", "PERSONA") {
         platform = IAgentRequester(platform_);
@@ -59,6 +60,7 @@ contract Persona is ERC721 {
         require(msg.value >= MINT_PRICE, "underpaid");
         require(personaOf[wallet] == 0, "already read");
         paidByWallet[wallet] = msg.value;
+        emit ProfileRequested(msg.sender, wallet);
         _requestStats(wallet);
     }
 
@@ -66,7 +68,21 @@ contract Persona is ERC721 {
     function reread(uint256 tokenId) external {
         address owner = _requireOwned(tokenId);
         require(msg.sender == owner, "not owner");
+        emit ProfileRequested(msg.sender, owner);
         _requestStats(owner);
+    }
+
+    /// @notice One-call profile read for other contracts/agents to compose on.
+    function profileOf(address wallet)
+        external
+        view
+        returns (uint256 tokenId, string memory dossierText, uint256 gen)
+    {
+        tokenId = personaOf[wallet];
+        if (tokenId != 0) {
+            dossierText = dossier[tokenId];
+            gen = generation[tokenId];
+        }
     }
 
     // ──────────────────────────────────────────────

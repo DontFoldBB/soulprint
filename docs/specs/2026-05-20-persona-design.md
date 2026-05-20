@@ -298,21 +298,37 @@ dossier. This is desirable: readings are reproducible, evolution is meaningful
 
 ## 9. Scope
 
+> **Re-prioritized 2026-05-20 against official judging criteria.** The rubric weights
+> *Agent-First Design* and *Autonomous Performance* heavily (2 of 4 criteria are about
+> the system running autonomously and being invokable by other agents). A purely
+> human-triggered "paste address → mint" flow scores weakly on half the rubric.
+> Therefore the **autonomous self-evolution (Cron)** and an **agent-callable entry point**
+> are promoted from stretch/hook into the **core MVP** — they are what make PERSONA an
+> autonomous agent system rather than an AI-powered dApp.
+
 ### MVP (must-have for submission)
 1. `read` → JSON API + LLM Inference → store dossier.
 2. Soulbound NFT mint with dynamic `tokenURI`.
 3. Manual re-read that updates an existing dossier (proves the dynamic concept).
-4. Frontend: read → loader → card → mint.
-5. Deployed + verified on Somnia testnet.
-6. First-100 refund.
-
-### Somnia hook (high priority — week 2)
-7. Cron-Reactivity automated evolution.
+4. **Cron-Reactivity autonomous evolution** — the contract re-reads and rewrites
+   dossiers on a schedule with no human and no off-chain server. This is the project's
+   core "autonomy" story and directly targets the *Autonomous Performance* criterion.
+5. **Agent-callable entry point** — a public function any contract/agent can call to
+   request a profile for an address, emitting a discoverable event. Targets the
+   *Agent-First Design* criterion ("agents can discover, invoke, or interact").
+6. Frontend: read → loader → card → mint, plus a visible "this NFT self-evolves" story.
+7. Deployed + verified on Somnia testnet.
+8. First-100 refund.
 
 ### Stretch (if time remains)
-8. Data Streams gallery.
-9. Rarity-based rewards (rare types get a bonus/tag; needs one extra agent call).
-10. On-chain SVG art instead of plain text.
+9. Data Streams gallery.
+10. Rarity-based rewards (rare types get a bonus/tag; needs one extra agent call).
+11. On-chain SVG art instead of plain text.
+
+### Pitch framing (for judges & demo)
+Frame PERSONA as *"an autonomous on-chain agent that watches wallets and rewrites their
+dossiers by itself — no human, no server — and that other agents can invoke."* Not
+"a fun NFT generator." The autonomy and agent-composability are the score-drivers.
 
 ---
 

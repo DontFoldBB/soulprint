@@ -136,6 +136,18 @@ describe("Persona", () => {
     expect(await persona.read.dossier([tokenId])).to.equal("TYPE: Satori Holder, Type II\nRARITY: 4");
   });
 
+  it("exposes a composable profileOf for other contracts/agents", async () => {
+    const { persona, platform, user } = await deploy();
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+    const p = await persona.read.profileOf([user.account.address]);
+    expect(p[0]).to.equal(1n);
+    expect(p[1]).to.equal(SAMPLE_DOSSIER);
+    expect(p[2]).to.equal(1n);
+  });
+
   it("does not mint on a failed stats response", async () => {
     const { persona, platform, user } = await deploy();
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
