@@ -262,6 +262,53 @@ Request details)`.
 - Callback: `onEvent(address emitter, bytes32[] eventTopics, bytes data)`; inside it
   `msg.sender == 0x0100` and `tx.origin == subscription owner`.
 
+#### Reactivity — full verified detail from the official tutorials (checked 2026-05-20)
+Two distinct mechanisms — pick the right one for Soulprint's self-evolution:
+- **`subscribe(handler, filter, options)` → RECURRING** event subscription (fires every time a
+  matching log appears; the SDK form fires *every block* if no block is pinned — "use carefully").
+- **`scheduleSubscriptionAtTimestamp/Block/Epoch(...)` → ONE-SHOT** timer. For periodic evolution,
+  re-call the scheduler inside `_onEvent` to chain the next tick (self-reschedule = the cron pattern).
+- **Timestamps are in MILLISECONDS** and must be **≥ 12 seconds in the future** (`block.timestamp +
+  duration) * 1000`; SDK rejects `timestampMs < now + 12_000`). SDK cancel: `cancelSoliditySubscription(id)`.
+- SDK scheduler options also expose `isGuaranteed` and `isCoalesced` (beyond the gas fields).
+- Solidity import paths (exact): `@somnia-chain/reactivity-contracts/contracts/SomniaEventHandler.sol`
+  and `@somnia-chain/reactivity-contracts/contracts/interfaces/SomniaExtensions.sol`. The structs are
+  nested: `SomniaExtensions.SubscriptionFilter` / `SomniaExtensions.SubscriptionOptions`.
+- The base contract auto-enforces the "only precompile may call me" gate, so overriding `_onEvent`
+  (internal) is enough — no manual `msg.sender == 0x0100` check needed.
+
+**Canonical working contract (event-subscribe variant) — adapt for our cron self-evolution:**
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;   // we're on 0.8.24/cancun — fine
+import { SomniaEventHandler } from "@somnia-chain/reactivity-contracts/contracts/SomniaEventHandler.sol";
+import { SomniaExtensions }   from "@somnia-chain/reactivity-contracts/contracts/interfaces/SomniaExtensions.sol";
+
+contract TransferCounter is SomniaEventHandler {
+    uint256 public subscriptionId;
+    constructor(address token_, uint64 gasLimit) payable {       // must be payable; fund ≥32 at deploy
+        SomniaExtensions.SubscriptionFilter memory filter = SomniaExtensions.SubscriptionFilter({
+            eventTopics: [ keccak256("Transfer(address,address,uint256)"), bytes32(0), bytes32(0), bytes32(0) ],
+            origin: address(0),      // any tx.origin
+            emitter: token_          // only logs from this contract
+        });
+        SomniaExtensions.SubscriptionOptions memory options = SomniaExtensions.SubscriptionOptions({
+            priorityFeePerGas: 1, maxFeePerGas: 0, gasLimit: gasLimit
+        });
+        subscriptionId = SomniaExtensions.subscribe(address(this), filter, options);
+    }
+    function _onEvent(address emitter, bytes32[] calldata topics, bytes calldata data) internal override {
+        // topics[1]/[2] = indexed args; abi.decode(data, (...)) = non-indexed. Do work here.
+        // (cron pattern: call SomniaExtensions.scheduleSubscriptionAtTimestamp(...) here to chain next tick)
+    }
+    function stop() external { SomniaExtensions.unsubscribe(subscriptionId); subscriptionId = 0; }
+    receive() external payable {}
+}
+```
+Deploy with the balance attached, e.g. Foundry:
+`forge create --rpc-url $RPC --private-key $PK --broadcast --value 33ether src/X.sol:X --constructor-args $TOKEN 2000000`.
+(Min is 32; tutorial sends 33 for headroom. Our contract already needs ≥32 STT on it for Cron anyway.)
+
 ---
 
 ## D. Somnia gas differences from Ethereum (research)
@@ -283,8 +330,14 @@ Somnia raises costs for un-optimized ops (budget rechecks needed for crypto-/dep
   `https://shannon-explorer.somnia.network/`, token **STT**.
 - Mainnet: chainId **5031**, RPC `https://api.infra.mainnet.somnia.network`, explorer
   `https://explorer.somnia.network`, token **SOMI**.
-- Agents platform (testnet): `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776`
+- Agents platform `SomniaAgents` (testnet): `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776`
   (mainnet `0x5E5205CF39E766118C01636bED000A54D93163E6`).
+- `AgentRegistry` (testnet): `0x08D1Fc808f1983d2Ea7B63a28ECD4d8C885Cd02A`
+  (mainnet `0xaD3101C37F091593fEe7cb471e92b5E9A1205194`).
+- Agent Explorer (canonical snippet source): testnet `https://agents.testnet.somnia.network`,
+  mainnet `https://agents.somnia.network`.
+- Receipts API base: testnet `https://receipts.testnet.agents.somnia.host`,
+  mainnet `https://receipts.mainnet.agents.somnia.host` (see section H).
 - MultiCallV3 (testnet): `0x841b8199E6d3Db3C6f264f6C2bd8848b3cA64223`.
 - AA: ERC-4337 supported; testnet EntryPoint v0.7 `0x0000000071727De22E5E9d8BAf0edAc6f37da032`,
   Factory `0x4be0ddfebca9a5a4a617dee4dece99e7c862dceb`. Session keys via
@@ -298,11 +351,16 @@ Somnia raises costs for un-optimized ops (budget rechecks needed for crypto-/dep
 
 ## F. Reference repos / sources
 
-- `Kali-Decoder/Somnia-Agentic-examples` (GitHub) — 5 working agent contract templates
-  (PriceOracle, SentimentAnalyzer, WebDataExtractor, IdeaReview, DaoProposalReview); our
-  ISomniaAgents + callback pattern came from here.
-- `emrestay/somnia-agents-skills` — Claude Code skill plugin with canonical IAgentRequester
-  interface + invoke scripts.
+- **`somnia-chain/agentathon` (GitHub) — the OFFICIAL canonical repo (verified 2026-05-20).**
+  Two packages: `somnia-agents-examples` (PriceOracle / SentimentAnalyzer / WebDataExtractor
+  contracts + deploy/invoke scripts + `interfaces/ISomniaAgents.sol` + hardhat config) and
+  `somnia-agents-skills` (Claude Code skill plugin with the source-of-truth
+  `references/agents.json`, `references/network-config.json`, `references/quickstart.md`,
+  `references/interfaces/IAgentRequester.sol`, `references/abi/AgentRequester.json`, and
+  per-agent SKILL.md files). The two repos below are personal forks/derivatives of this.
+- `Kali-Decoder/Somnia-Agentic-examples` (GitHub) — fork-style examples (also lists IdeaReview,
+  DaoProposalReview); our ISomniaAgents + callback pattern originally came from here.
+- `emrestay/somnia-agents-skills` — personal copy of the skills plugin.
 - `0xpochita/SomMemo` — cron one-shot self-rescheduling pattern (dead-man's switch).
 - `local-optimum/reactive-stt-faucet` — best teaching example for Reactivity + gas tuning.
 - LLM-friendly docs corpus: https://docs.somnia.network/llms-full.txt (NOTE: this file only has
@@ -320,3 +378,50 @@ Somnia raises costs for un-optimized ops (budget rechecks needed for crypto-/dep
 - Most "AI on Somnia" projects call Gemini/Groq OFF-CHAIN and only settle on-chain. Using NATIVE
   on-chain inference (`inferString`/`inferToolsChat`) with consensus is the rare differentiator —
   Soulprint does this.
+
+---
+
+## H. Canonical quickstart facts (from somnia-chain/agentathon, verified 2026-05-20)
+
+These supersede/confirm earlier notes — they come straight from the official repo's `agents.json`
++ `quickstart.md`.
+
+**Full agent ABIs (use these exact signatures):**
+- JSON API (`json-fetch`, id `13174292974160097713`, 0.03): `fetchString(url,selector)` (NO
+  decimals), `fetchUint(url,selector,uint8 decimals)`, `fetchInt(url,selector,uint8 decimals)`,
+  `fetchBool(url,selector)`, `fetchStringArray(url,selector)`,
+  `fetchUintArray(url,selector,uint8 decimals)`. `consensusHint: majority`.
+- LLM Inference (`llm-inference`, id `12847293847561029384`, 0.07): see §A3 for full sigs.
+- Parse Website (`llm-parse-website`, id `12875401142070969085`, 0.10) — FULLER than §A had:
+  `ExtractString(string key, string description, string[] options, string prompt, string url,
+  bool resolveUrl, uint8 numPages) → string` and
+  `ExtractANumber(string key, string description, uint256 min, uint256 max, string prompt,
+  string url, bool resolveUrl, uint8 numPages) → uint256`. `resolveUrl=true` → search mode
+  (find the right page in the domain); `false` → scrape that exact URL. `numPages` caps pages.
+
+**Deposit (the part everyone gets wrong) — split into two pots:**
+- Operations reserve = `getRequestDeposit()` ≈ `0.01 × subcommitteeSize` (per-runner gas refund,
+  callback gas, finalisation, keeper refund on timeout). This is the FLOOR.
+- Agent reward pot = `msg.value − reserve`, split among elected subcommittee; unclaimed remainder
+  rebated to requester (→ need `receive()`; failed rebate emits `NativeTransferFailed`).
+- Formula `msg.value ≥ getRequestDeposit() + pricePerAgent × subcommitteeSize`. Worked examples
+  (default subSize 3): **JSON 0.12, LLM 0.24, Parse Website 0.33 STT.** (Soulprint sends an LLM
+  request → budget for **0.24** on that leg.)
+- Advanced: `getAdvancedRequestDeposit(subSize)` returns the matching floor for a non-default size.
+
+**Consensus / requests:**
+- Default `createRequest` = **Majority** (finalise when `threshold` validators return the SAME
+  result; decode any matching `responses[i].result`).
+- `createAdvancedRequest(agentId, cb, selector, payload, subcommitteeSize, threshold,
+  ConsensusType.Threshold, timeout)` for per-validator-varying results (price variance, RNG,
+  sensors) — callback gets ALL responses; aggregate yourself (median/XOR/avg). Example used
+  `(…, 5, 3, Threshold, 1 minutes)`.
+- **ResponseStatus enum numeric values: None 0, Pending 1, Success 2, Failed 3, TimedOut 4.**
+
+**Receipts API (ties to the §A2 receipts note — subjective per-node audit trail, NOT consensused):**
+- Testnet JSON: `GET https://receipts.testnet.agents.somnia.host/agent-receipts?contractAddress=
+  <SomniaAgents>&requestId=<id>`; web view `https://agents.testnet.somnia.network/receipts/<id>`.
+- Mainnet: `https://receipts.mainnet.agents.somnia.host/...` / `https://agents.somnia.network/receipts/<id>`.
+- Receipt `steps` for JSON API: `request_received`, `http_request`, `value_extracted`,
+  `response_encoded` (+ final `result`); LLM agents also emit `llm_request`/`llm_response`/`reasoning`.
+  Useful for debugging why a request failed/timed out (we can wire this into the demo/timeline).
