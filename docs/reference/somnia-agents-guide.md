@@ -152,6 +152,29 @@ within seconds.
 - Tip: show up with a tiny end-to-end demo working (one request, one callback, one state update),
   then iterate on product logic instead of debugging setup.
 
+### A2. Addendum from the live docs overview page (checked 2026-05-20, https://docs.somnia.network/agents)
+The high-level overview confirms our numbers (platform testnet `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776`,
+mainnet `0x5E5205CF39E766118C01636bED000A54D93163E6`; JSON API 0.03 / LLM 0.07 / Parse Website 0.10
+per validator) and adds these previously-uncaptured facts:
+
+- **Roadmap — Phase 1 (current)** lists FIVE curated core agents, not three. Beyond the three we
+  use (JSON API, LLM Inference, LLM Parse Website) there are also **Idempotent Request** and
+  **Find URL for Topic**. (Docs don't yet publish numeric agentIds/prices for those two; the page
+  also uses string aliases `json-fetch` / `llm-inference` / `llm-parse-website` for the three.)
+- **Roadmap — Phase 2 (2026):** **Custom User-Defined Agents**, a **Full Agent SDK**, and
+  **Advanced Tooling**. (i.e. only the curated set exists today; you can't define your own agent yet.)
+- **Use-case categories (official framing):** Oracles · AI Services (explicitly names "Dynamic NFT
+  descriptions" — Soulprint's lane) · **Outbound Communication** (webhook triggers from contracts,
+  notifications to external systems, off-chain workflow initiation, DB sync — a NEW outbound
+  direction vs. the inbound data/inference we use) · Data Processing.
+- **Receipts:** a signed manifest of intermediate computation steps (like a CI build log).
+  Validators reach consensus on the FINAL result only; receipt steps are subjective (what one node
+  did), so don't treat intermediate steps as consensus-verified.
+- **Payment split (confirms our deposit model):** the deposit is split into an **operations
+  reserve** (runner gas refunds + callback gas + keeper payments) and an **agent reward pot**
+  (split equally among subcommittee members; remainder rebated to the requester → hence the
+  required `receive()`).
+
 ---
 
 ## B. Verified interface (in repo at contracts/interfaces/ISomniaAgents.sol)
