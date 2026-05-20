@@ -1,9 +1,30 @@
-# PERSONA — Design Spec
+# Soulprint — Design Spec
 
+> **Tagline:** "A living AI dossier for your wallet." (punchline: "Mint once. It evolves forever.")
+>
 > A self-updating dynamic NFT that reads your wallet's on-chain history and mints
-> an AI-written personality dossier — which then evolves on its own over time.
+> an AI-written identity profile — which then evolves on its own over time.
 >
 > Built for the Encode Club **Somnia Agentathon** (May 20 – June 10, 2026).
+
+> **Branding & product refinements (locked 2026-05-20):**
+> - **Name: Soulprint** (was "PERSONA"; ties to the soulbound NFT). "persona/archetype" stays
+>   as internal terms; "dossier" stays as the term for the AI-written text.
+> - **Positioning:** a *dynamic on-chain identity / reputation primitive*, not "AI wrote a
+>   description." Autonomy (self-evolution) and agent-composability are the score-drivers.
+> - **Tone = blend:** the AI output is BOTH structured (machine-readable) AND witty.
+>   Structured fields for judges/composability: an **archetype** (e.g. Newborn Wallet,
+>   Testnet Explorer, DeFi User, NFT Collector, Contract Deployer, Sybil-Like Farmer,
+>   Power User) plus 1–2 **scores** (e.g. Activity, Risk). A witty **summary** line carries
+>   the viral/roast hook for the user's Telegram audience.
+> - **Refinements to fold in (from a Codex review, all within existing prompt/frontend tasks):**
+>   (a) richer wallet stats from the explorer (token transfers, NFT activity, contract
+>   deploys — not just tx count) so archetypes are accurate; (b) proper NFT `attributes`
+>   (Archetype, scores, Last Update) rendered in the card; (c) a **timeline** of archetype
+>   changes built from `generation` + `DossierUpdated` events ("it lives"); (d) keep the
+>   self-evolution autonomous (Cron), never user-button-only.
+> - **Explicitly NOT doing:** cross-chain reads, "AI judges good/bad wallet," privacy as the
+>   headline. Somnia-testnet-only for this version.
 
 ---
 
