@@ -162,4 +162,74 @@ describe("Persona", () => {
     await platform.write.deliver([2n, dossierResult(""), TimedOut]);
     expect(await persona.read.personaOf([user.account.address])).to.equal(0n);
   });
+
+  it("computes a deterministic on-chain activity score from tx count", async () => {
+    const { persona, platform, user } = await deploy();
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]); // 50..199 bucket -> 60
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await persona.read.personaOf([user.account.address]);
+    expect(await persona.read.activityScore([tokenId])).to.equal(60n);
+  });
+
+  it("parses the canonical ARCHETYPE field from the dossier", async () => {
+    const { persona, platform, user } = await deploy();
+    const dossier =
+      "TYPE: Gas Goblin, Type III\nARCHETYPE: DeFi User\nKARMA: +5\nRARITY: 4";
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(dossier), Success]);
+    const tokenId = await persona.read.personaOf([user.account.address]);
+    expect(await persona.read.archetypeOf([tokenId])).to.equal("DeFi User");
+  });
+
+  it("archetypeOf is empty when the dossier omits the ARCHETYPE field", async () => {
+    const { persona, platform, user } = await deploy();
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await persona.read.personaOf([user.account.address]);
+    expect(await persona.read.archetypeOf([tokenId])).to.equal("");
+  });
+
+  it("renders Archetype and Activity as on-chain NFT attributes", async () => {
+    const { persona, platform, user } = await deploy();
+    const dossier = "TYPE: Gas Goblin, Type III\nARCHETYPE: DeFi User\nKARMA: +5\nRARITY: 4";
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]); // activity 60
+    await platform.write.deliver([2n, dossierResult(dossier), Success]);
+    const tokenId = await persona.read.personaOf([user.account.address]);
+
+    const uri = await persona.read.tokenURI([tokenId]);
+    const json = JSON.parse(Buffer.from(uri.split(",")[1], "base64").toString("utf8"));
+    const traits: Record<string, unknown> = Object.fromEntries(
+      json.attributes.map((a: { trait_type: string; value: unknown }) => [a.trait_type, a.value])
+    );
+    expect(traits.Archetype).to.equal("DeFi User");
+    expect(traits.Activity).to.equal(60);
+    expect(traits.Generation).to.equal(1);
+  });
+
+  it("exposes a composable traitsOf for agents (archetype + activity + generation)", async () => {
+    const { persona, platform, user } = await deploy();
+    const dossier = "TYPE: Gas Goblin, Type III\nARCHETYPE: DeFi User\nKARMA: +5\nRARITY: 4";
+    await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(dossier), Success]);
+
+    const t = await persona.read.traitsOf([user.account.address]);
+    expect(t[0]).to.equal(1n);          // tokenId
+    expect(t[1]).to.equal("DeFi User"); // archetype
+    expect(t[2]).to.equal(60n);         // activity
+    expect(t[3]).to.equal(1n);          // generation
+  });
+
+  it("traitsOf returns zeros for an unprofiled wallet", async () => {
+    const { persona, user } = await deploy();
+    const t = await persona.read.traitsOf([user.account.address]);
+    expect(t[0]).to.equal(0n);
+    expect(t[1]).to.equal("");
+    expect(t[2]).to.equal(0n);
+    expect(t[3]).to.equal(0n);
+  });
 });

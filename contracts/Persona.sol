@@ -28,12 +28,14 @@ contract Persona is ERC721 {
         address wallet;
         Stage stage;
         bool active;
+        uint256 txCount;
     }
 
     mapping(uint256 => Ctx) internal requests; // agent requestId -> ctx
 
     mapping(address => uint256) public personaOf;     // wallet -> tokenId (0 = none)
     mapping(uint256 => string)  public dossier;       // tokenId -> dossier text
+    mapping(uint256 => uint256) public txCountOf;     // tokenId -> tx count at last update
     mapping(uint256 => uint256) public generation;    // tokenId -> version
     mapping(uint256 => uint256) public lastUpdated;   // tokenId -> timestamp
     mapping(address => uint256) public paidByWallet;  // escrowed mint amount
@@ -85,6 +87,21 @@ contract Persona is ERC721 {
         }
     }
 
+    /// @notice Machine-readable traits for other contracts/agents: canonical
+    /// archetype + on-chain activity score + generation. Zeros if unprofiled.
+    function traitsOf(address wallet)
+        external
+        view
+        returns (uint256 tokenId, string memory archetype, uint256 activity, uint256 gen)
+    {
+        tokenId = personaOf[wallet];
+        if (tokenId != 0) {
+            archetype = archetypeOf(tokenId);
+            activity = activityScore(tokenId);
+            gen = generation[tokenId];
+        }
+    }
+
     // ──────────────────────────────────────────────
     // Agent pipeline
     // ──────────────────────────────────────────────
@@ -102,7 +119,7 @@ contract Persona is ERC721 {
         uint256 id = platform.createRequest{value: deposit}(
             JSON_API_AGENT_ID, address(this), this.handleStats.selector, payload
         );
-        requests[id] = Ctx(wallet, Stage.Stats, true);
+        requests[id] = Ctx(wallet, Stage.Stats, true, 0);
     }
 
     function handleStats(
@@ -135,8 +152,11 @@ contract Persona is ERC721 {
             "\n- Total transactions: ", Strings.toString(txCount),
             "\n\nWrite the dossier in EXACTLY this format. TYPE must be a made-up 2-4 word "
             "archetype NAME (invent one, e.g. 'The Ghost', 'Serial Aper', 'Gas Goblin'), "
-            "then a comma, then 'Type' and a roman numeral I-V:\n"
+            "then a comma, then 'Type' and a roman numeral I-V. ARCHETYPE must be the single "
+            "best fit from the fixed list, copied EXACTLY:\n"
             "TYPE: <archetype name>, Type <I-V>\n"
+            "ARCHETYPE: <one of: Newborn Wallet | Testnet Explorer | DeFi User | NFT Collector "
+            "| Contract Deployer | Sybil-Like Farmer | Power User>\n"
             "STRENGTH: <one line>\n"
             "WEAKNESS: <one line>\n"
             "STYLE: \"<short quote>\"\n"
@@ -152,7 +172,7 @@ contract Persona is ERC721 {
         uint256 id = platform.createRequest{value: deposit}(
             LLM_AGENT_ID, address(this), this.handleDossier.selector, payload
         );
-        requests[id] = Ctx(wallet, Stage.Dossier, true);
+        requests[id] = Ctx(wallet, Stage.Dossier, true, txCount);
     }
 
     function handleDossier(
@@ -190,9 +210,61 @@ contract Persona is ERC721 {
             }
         }
         dossier[tokenId] = text;
+        txCountOf[tokenId] = ctx.txCount;
         generation[tokenId] += 1;
         lastUpdated[tokenId] = block.timestamp;
         emit DossierUpdated(tokenId, generation[tokenId]);
+    }
+
+    /// @notice Deterministic, hallucination-free activity score (0–100) derived
+    /// on-chain from the wallet's transaction count. Machine-readable for agents.
+    function activityScore(uint256 tokenId) public view returns (uint256) {
+        _requireOwned(tokenId);
+        uint256 n = txCountOf[tokenId];
+        if (n == 0) return 0;
+        if (n < 10) return 20;
+        if (n < 50) return 40;
+        if (n < 200) return 60;
+        if (n < 1000) return 80;
+        return 100;
+    }
+
+    /// @notice The canonical archetype the LLM assigned (parsed from the dossier's
+    /// `ARCHETYPE:` line). Empty string if absent. Machine-readable for agents.
+    function archetypeOf(uint256 tokenId) public view returns (string memory) {
+        _requireOwned(tokenId);
+        return _extractField(dossier[tokenId], "ARCHETYPE:");
+    }
+
+    /// @dev Tolerant single-line field extractor: returns the trimmed text after the
+    /// first occurrence of `label` up to the next newline, or "" if not found.
+    function _extractField(string memory text, string memory label)
+        internal
+        pure
+        returns (string memory)
+    {
+        bytes memory t = bytes(text);
+        bytes memory l = bytes(label);
+        if (l.length == 0 || t.length < l.length) return "";
+
+        uint256 pos = type(uint256).max;
+        for (uint256 i = 0; i + l.length <= t.length; i++) {
+            bool matched = true;
+            for (uint256 j = 0; j < l.length; j++) {
+                if (t[i + j] != l[j]) { matched = false; break; }
+            }
+            if (matched) { pos = i + l.length; break; }
+        }
+        if (pos == type(uint256).max) return "";
+
+        while (pos < t.length && t[pos] == 0x20) pos++;          // skip leading spaces
+        uint256 end = pos;
+        while (end < t.length && t[end] != 0x0a && t[end] != 0x0d) end++; // until newline
+        while (end > pos && t[end - 1] == 0x20) end--;           // trim trailing spaces
+
+        bytes memory out = new bytes(end - pos);
+        for (uint256 k = 0; k < out.length; k++) out[k] = t[pos + k];
+        return string(out);
     }
 
     // ──────────────────────────────────────────────
@@ -201,13 +273,15 @@ contract Persona is ERC721 {
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
+        string memory gen = Strings.toString(generation[tokenId]);
         string memory json = string.concat(
             '{"name":"Persona #', Strings.toString(tokenId),
-            '","description":"On-chain personality dossier, generation ',
-            Strings.toString(generation[tokenId]),
-            '","attributes":[{"trait_type":"Generation","value":',
-            Strings.toString(generation[tokenId]),
-            '}],"dossier":', _jsonString(dossier[tokenId]), '}'
+            '","description":"On-chain personality dossier, generation ', gen,
+            '","attributes":[',
+                '{"trait_type":"Archetype","value":', _jsonString(archetypeOf(tokenId)), '},',
+                '{"trait_type":"Activity","value":', Strings.toString(activityScore(tokenId)), '},',
+                '{"trait_type":"Generation","value":', gen, '}',
+            '],"dossier":', _jsonString(dossier[tokenId]), '}'
         );
         return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
     }
