@@ -309,6 +309,12 @@ Deploy with the balance attached, e.g. Foundry:
 `forge create --rpc-url $RPC --private-key $PK --broadcast --value 33ether src/X.sol:X --constructor-args $TOKEN 2000000`.
 (Min is 32; tutorial sends 33 for headroom. Our contract already needs ≥32 STT on it for Cron anyway.)
 
+> **Off-chain reactivity is NOT an option for us.** It's a client-side WebSocket (`eth_subscribe`
+> → `somnia_watch`) served by an RPC node — costs no SOMI but requires a persistent client
+> connection, isn't stored on-chain, doesn't buffer missed events, and dies on disconnect. So it
+> can't act as an autonomous scheduler. On-chain reactivity (above) is the only path that satisfies
+> the "Autonomous Performance" judging criterion.
+
 ---
 
 ## D. Somnia gas differences from Ethereum (research)
@@ -425,3 +431,12 @@ These supersede/confirm earlier notes — they come straight from the official r
 - Receipt `steps` for JSON API: `request_received`, `http_request`, `value_extracted`,
   `response_encoded` (+ final `result`); LLM agents also emit `llm_request`/`llm_response`/`reasoning`.
   Useful for debugging why a request failed/timed out (we can wire this into the demo/timeline).
+
+**Agent usage nuances (from the base-agent pages, 2026-05-20):**
+- JSON API selector = dot-notation with bracket array indexing: `data.price`, `items[0].name`.
+  `decimals` multiplies by 10^decimals (decimals=8: `42000.50 → 4200050000000`, `0.00001234 → 1234`).
+  Doc doesn't spell out behaviour on missing fields → treat as Failed, always check status (§quickstart pitfall 4).
+- Parse Website: `resolveUrl=true` = search the domain for the right page; `false` = scrape that exact
+  URL and `numPages` is capped to 1. `options=[]` (empty) = unconstrained string output.
+  `ExtractANumber`: set `min=max=0` to disable bounds; negatives clamped to 0; bounds must be within
+  JS safe-integer range. Visits with a REAL browser → handles JS-rendered pages.
