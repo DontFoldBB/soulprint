@@ -21,7 +21,8 @@ contract Soulprint is ERC721 {
     uint256 public constant SUBCOMMITTEE = 3;
     uint256 public constant JSON_PRICE_PER_AGENT = 0.03 ether;
     uint256 public constant LLM_PRICE_PER_AGENT = 0.07 ether;
-    uint256 public constant MINT_PRICE = 1 ether;
+    uint256 public constant MINT_PRICE = 1 ether;            // profiling your OWN wallet
+    uint256 public constant PROFILE_OTHER_PRICE = 2 ether;   // profiling someone else's wallet
 
     enum Stage { None, Stats, Dossier }
 
@@ -72,9 +73,12 @@ contract Soulprint is ERC721 {
 
     /// @notice First read of a wallet: kicks off the agent pipeline, mints on completion.
     function read(address wallet) external payable {
-        require(msg.value >= MINT_PRICE, "underpaid");
         require(soulprintOf[wallet] == 0, "already read");
-        paidByWallet[wallet] = msg.value;
+        bool isSelf = wallet == msg.sender;
+        require(msg.value >= (isSelf ? MINT_PRICE : PROFILE_OTHER_PRICE), "underpaid");
+        // Only self-mints are refund-eligible (first 100). Profiling someone else is paid
+        // (the soulbound NFT still mints to `wallet`, not to the payer).
+        paidByWallet[wallet] = isSelf ? msg.value : 0;
         emit ProfileRequested(msg.sender, wallet);
         _requestStats(wallet);
     }

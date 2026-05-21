@@ -248,6 +248,22 @@ describe("Soulprint", () => {
     ).to.be.rejected;
   });
 
+  it("charges more to mint a Soulprint for someone else, and mints it to them", async () => {
+    const { soulprint, platform, user } = await deploy();
+    const other = "0x1111111111111111111111111111111111111111";
+    // 1 STT (self price) is not enough to profile a different wallet
+    await expect(
+      soulprint.write.read([other], { value: parseEther("1"), account: user.account })
+    ).to.be.rejected;
+    // 2 STT works — and the NFT is minted to `other`, not the payer
+    await soulprint.write.read([other], { value: parseEther("2"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([other]);
+    expect(tokenId).to.equal(1n);
+    expect(getAddress(await soulprint.read.ownerOf([tokenId]))).to.equal(getAddress(other));
+  });
+
   it("ExampleGate: a wallet with enough activity can enter (NFT-as-access)", async () => {
     const { soulprint, platform, user } = await deploy();
     await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
