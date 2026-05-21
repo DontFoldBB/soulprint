@@ -15,6 +15,17 @@ are in ENGLISH.**
 
 ---
 
+## ⟶ Resuming a session? Read `docs/handoff.md` FIRST (live snapshot, updated 2026-05-21)
+
+GitHub: **https://github.com/DontFoldBB/soulprint** (public). Key deltas since day-1 below:
+contract renamed Persona→**Soulprint** + structured dossier, tiered pricing (1 STT self / 2 STT
+others), `withdraw`, `evolveBatch`, `SoulprintCron` (Cron autonomy), `ExampleGate`; 28 tests; solc
+0.8.30; reactivity contracts **vendored** in `contracts/somnia-reactivity/` (don't npm-install that
+pkg). MCP server in `mcp/`. Frontend redesigned (monochrome Somnia, holographic flip `SoulCard`,
+Connect Wallet). **The live deployed contract (address below) is STALE — needs redeploy.** Pushes:
+normal `git push` works; force-push must be run by the user. **Never add `Co-Authored-By: Claude`.**
+Biggest remaining risk: **live Cron autonomy proof (criterion #4) not yet done.**
+
 ## Current status (day 1, 2026-05-20)
 
 - ✅ Core contract **deployed & working live on Somnia testnet**: read → JSON API agent →
