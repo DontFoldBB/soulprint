@@ -326,6 +326,39 @@
   color: rgba(167, 167, 173, 0.9);
 }
 
+/* On-chain stat row on the front face (Activity / Txns / Gen) */
+.sc-statrow {
+  margin-top: 1.2rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 1.6rem;
+  pointer-events: none;
+}
+
+.sc-statcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 3.2rem;
+}
+
+.sc-statcell-value {
+  font-family: var(--font-syne), system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(237, 237, 238, 0.95);
+}
+
+.sc-statcell-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(106, 106, 114, 0.95);
+}
+
 .sc-spacer {
   flex: 1 1 auto;
   min-height: 0.75rem;

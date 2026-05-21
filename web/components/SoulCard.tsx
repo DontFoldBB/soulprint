@@ -116,10 +116,11 @@ export type SoulCardProps = {
   d: Dossier;
   generation?: number;
   activity?: number;
+  txCount?: number;
   wallet?: string;
 };
 
-export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
+export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardProps) {
   const stars = Math.max(0, Math.min(5, Number(d.rarity ?? 0)));
   const tier = TIERS[(stars > 0 ? stars : 1) - 1];
   const tierName = tier.name;
@@ -326,6 +327,26 @@ export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
                     <div className="sc-details">
                       <h3>{d.type ?? "Unidentified Wallet"}</h3>
                       <p>{(d.archetype ?? "Wallet") + " · " + tierName}</p>
+                    </div>
+
+                    {/* On-chain stats at a glance */}
+                    <div className="sc-statrow">
+                      <div className="sc-statcell">
+                        <span className="sc-statcell-value" style={{ color: tier.color }}>
+                          {activity ?? "—"}
+                        </span>
+                        <span className="sc-statcell-label">Activity</span>
+                      </div>
+                      <div className="sc-statcell">
+                        <span className="sc-statcell-value">
+                          {txCount !== undefined ? txCount.toLocaleString("en-US") : "—"}
+                        </span>
+                        <span className="sc-statcell-label">Txns</span>
+                      </div>
+                      <div className="sc-statcell">
+                        <span className="sc-statcell-value">{generation ?? "—"}</span>
+                        <span className="sc-statcell-label">Gen</span>
+                      </div>
                     </div>
 
                     <div className="sc-spacer" />
