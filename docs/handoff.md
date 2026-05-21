@@ -57,8 +57,10 @@ contract. Register: `node mcp/dist/index.js` as an MCP server. Agent-First proof
   **Rarity is colour-coded**: Common steel `#8b9099`, Uncommon green `#5fb389`, Rare blue `#5b93de`,
   Epic violet `#a06fd6`, Legendary gold `#f0b94e`. "tap or swipe to flip" caption below the card.
 - `page.tsx`: **Connect Wallet** button (auto-loads your card), address lookup for ANY wallet,
-  view-existing-without-tx, auto chain-switch to Somnia, dynamic mint button label (1 vs 2 STT),
-  "See a sample dossier" preview. Reads the OLD live contract (so traitsOf/archetype/activity
+  view-existing-without-tx, auto chain-switch to Somnia, "See a sample dossier" preview.
+  **Mint value is 1 STT flat right now** to match the live OLD contract; the contract's 1/2 split
+  (self/other) + dynamic label are reverted in the UI until redeploy (restore them then).
+  Reads the OLD live contract (so traitsOf/archetype/activity
   degrade gracefully until redeploy).
 - `web/lib/soulprint.ts` holds `SOULPRINT_ADDRESS` — **update it after redeploy**.
 - `DossierCard.tsx` is now unused (kept as fallback; can delete).
