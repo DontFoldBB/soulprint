@@ -72,10 +72,12 @@ contract SoulprintCron is SomniaEventHandler {
     }
 
     function _scheduleNext() internal {
+        // maxFeePerGas MUST exceed the protocol base fee (>= 6 gwei) or the scheduled
+        // callback tx is never includable. (A previous build set 0 and ticks never fired.)
         SomniaExtensions.SubscriptionOptions memory opts = SomniaExtensions.SubscriptionOptions({
-            priorityFeePerGas: 1,
-            maxFeePerGas: 0, // 0 => skip the max-fee check; protocol applies its own
-            gasLimit: 5_000_000
+            priorityFeePerGas: 1 gwei,
+            maxFeePerGas: 50 gwei,
+            gasLimit: 12_000_000
         });
         subscriptionId = SomniaExtensions.scheduleSubscriptionAtTimestamp(
             address(this),
