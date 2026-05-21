@@ -21,7 +21,6 @@ import {
 } from "@/lib/soulprint";
 import { DossierCard } from "@/components/DossierCard";
 import { DossierSkeleton } from "@/components/DossierSkeleton";
-import LanyardStage from "@/components/LanyardStage";
 
 const pub = createPublicClient({ chain: somniaTestnet, transport: http() });
 
@@ -283,13 +282,6 @@ export default function Home() {
                 Sample preview — connect a wallet for the real read
               </p>
             )}
-            {/* Draggable 3D lanyard flourish — grab the card and toss it. */}
-            <div className="relative mx-auto h-[440px] w-full max-w-xl">
-              <LanyardStage />
-              <p className="pointer-events-none absolute inset-x-0 bottom-1 text-center text-[10px] uppercase tracking-[0.28em] text-foreground/30">
-                Drag the card
-              </p>
-            </div>
             <DossierCard
               d={result.dossier}
               generation={result.generation}
