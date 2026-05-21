@@ -10,6 +10,32 @@ export const SOULPRINT_ABI = [
     inputs: [{ name: "wallet", type: "address" }],
     outputs: [],
   },
+  // Version-agnostic composite read: tokenId + dossier text + generation.
+  {
+    type: "function",
+    name: "profileOf",
+    stateMutability: "view",
+    inputs: [{ name: "wallet", type: "address" }],
+    outputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "dossier", type: "string" },
+      { name: "generation", type: "uint256" },
+    ],
+  },
+  // Structured traits — may not exist on older deployments; call defensively.
+  {
+    type: "function",
+    name: "traitsOf",
+    stateMutability: "view",
+    inputs: [{ name: "wallet", type: "address" }],
+    outputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "archetype", type: "string" },
+      { name: "activity", type: "uint256" },
+      { name: "generation", type: "uint256" },
+    ],
+  },
+  // Legacy granular views (fallbacks if profileOf is absent).
   {
     type: "function",
     name: "soulprintOf",
@@ -42,6 +68,7 @@ export const SOULPRINT_ABI = [
 
 export type Dossier = {
   type?: string;
+  archetype?: string;
   strength?: string;
   weakness?: string;
   style?: string;
@@ -59,6 +86,7 @@ export function parseDossier(raw: string): Dossier {
     const value = line.slice(idx + 1).trim();
     switch (key) {
       case "TYPE": out.type = value; break;
+      case "ARCHETYPE": out.archetype = value; break;
       case "STRENGTH": out.strength = value; break;
       case "WEAKNESS": out.weakness = value; break;
       case "STYLE": out.style = value.replace(/^"|"$/g, ""); break;
@@ -69,3 +97,18 @@ export function parseDossier(raw: string): Dossier {
   }
   return out;
 }
+
+// A static sample so the design is previewable without an on-chain read.
+export const SAMPLE_DOSSIER: Dossier = {
+  type: "The Midnight Liquidity Goblin",
+  archetype: "DeFi User",
+  strength: "Sniffs out yield in the dark; never met a pool it wouldn't farm.",
+  weakness: "Gas-fee denial. Has approved more tokens than it can name.",
+  style: "I'm not aping, I'm allocating.",
+  karma: "+42",
+  notes:
+    "High-frequency degen with a surprisingly disciplined exit game. Smells faintly of stablecoins and regret.",
+  rarity: "4",
+};
+export const SAMPLE_ACTIVITY = 78;
+export const SAMPLE_GENERATION = 3;
