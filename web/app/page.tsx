@@ -175,8 +175,9 @@ export default function Home() {
         abi: SOULPRINT_ABI,
         functionName: "read",
         args: [wallet],
-        // 1 STT to profile your own wallet, 2 STT to profile someone else's.
-        value: parseEther(from.toLowerCase() === wallet.toLowerCase() ? "1" : "2"),
+        // Live contract charges 1 STT flat. TODO: restore 1/2 split (self/other) after
+        // redeploying the tiered-pricing contract.
+        value: parseEther("1"),
       });
       setStatus("Transaction sent — confirming on Somnia…");
       await pub.waitForTransactionReceipt({ hash });
@@ -300,19 +301,13 @@ export default function Home() {
             }}
           >
             <span className="relative z-10">
-              {busy
-                ? "Working…"
-                : isAddress(address) &&
-                  connected &&
-                  address.toLowerCase() !== connected.toLowerCase()
-                ? "Read this wallet · 2 STT"
-                : "Read me · 1 STT"}
+              {busy ? "Working…" : "Read me · 1 STT"}
             </span>
           </button>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/40">
-          <span>1 STT for your own wallet · 2 STT for someone else · soulbound NFT mints to the target.</span>
+          <span>1 STT · soulbound NFT mints to the target wallet. You can profile any wallet.</span>
           <button
             onClick={showSample}
             className="font-semibold text-soul-blue/80 underline-offset-4 transition hover:text-soul-blue hover:underline"
