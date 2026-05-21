@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react";
 import { Dossier } from "@/lib/soulprint";
 import "./SoulCard.css";
 
@@ -128,7 +128,9 @@ export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const touchX = useRef<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   // ── Cursor-following 3D tilt (logic ported verbatim from React Bits ProfileCard) ──
   const setVars = useCallback((x: number, y: number, card: HTMLElement, wrap: HTMLElement) => {
@@ -213,6 +215,8 @@ export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
     const wrap = wrapRef.current;
     if (!card || !wrap) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // While flipped, the back face is showing — don't run the front-face tilt.
+    if (flipped) return;
 
     card.addEventListener("pointerenter", onEnter);
     card.addEventListener("pointermove", onMove);
@@ -227,7 +231,7 @@ export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
       card.removeEventListener("pointerleave", onLeave);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [onEnter, onMove, onLeave, setVars]);
+  }, [onEnter, onMove, onLeave, setVars, flipped]);
 
   // Tier-driven theming, passed to CSS via inline custom properties.
   const wrapperStyle = useMemo(() => {
@@ -251,127 +255,168 @@ export function SoulCard({ d, generation, activity, wallet }: SoulCardProps) {
     } as CSSProperties;
   }, [tier]);
 
-  const onCopy = useCallback(async () => {
-    if (!wallet) return;
-    try {
-      await navigator.clipboard.writeText(wallet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      /* clipboard may be unavailable (insecure context) — fail silently */
-    }
-  }, [wallet]);
+  const onCopy = useCallback(
+    async (e: ReactMouseEvent) => {
+      e.stopPropagation(); // never flip when copying
+      if (!wallet) return;
+      try {
+        await navigator.clipboard.writeText(wallet);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1400);
+      } catch {
+        /* clipboard may be unavailable (insecure context) — fail silently */
+      }
+    },
+    [wallet]
+  );
+
+  const toggleFlip = useCallback(() => setFlipped((f) => !f), []);
+
+  // Horizontal swipe also flips the card (touch devices).
+  const onTouchStart = useCallback((e: ReactTouchEvent) => {
+    touchX.current = e.touches[0]?.clientX ?? null;
+  }, []);
+  const onTouchEnd = useCallback(
+    (e: ReactTouchEvent) => {
+      if (touchX.current == null) return;
+      const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
+      touchX.current = null;
+      if (Math.abs(dx) > 40) toggleFlip();
+    },
+    [toggleFlip]
+  );
 
   return (
     <div className="rise">
-      {/* ── HERO: holographic tilt card ───────────────────────── */}
-      <div ref={wrapRef} className="sc-wrapper" style={wrapperStyle}>
-        <section ref={cardRef} className="sc-card">
-          <div className="sc-inside">
-            <div className="sc-shine" />
-            <div className="sc-glare" />
-            <div className="sc-content">
-              <div className="sc-top">
-                <span className="sc-brand">Soulprint</span>
-                <span className="sc-tier">{tierName}</span>
-              </div>
+      {/* perspective stage → flipper (rotateY toggled) → two faces */}
+      <div className="sc-stage" style={wrapperStyle}>
+        <div
+          className={"sc-flipper" + (flipped ? " is-flipped" : "")}
+          onClick={toggleFlip}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          role="button"
+          tabIndex={0}
+          aria-label="Flip Soulprint card"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleFlip();
+            }
+          }}
+        >
+          {/* ── FRONT FACE: holographic tilt card ─────────────── */}
+          <div className="sc-face sc-face-front">
+            <div ref={wrapRef} className="sc-wrapper">
+              <section ref={cardRef} className="sc-card">
+                <div className="sc-inside">
+                  <div className="sc-shine" />
+                  <div className="sc-glare" />
+                  <div className="sc-content">
+                    <div className="sc-top">
+                      <span className="sc-brand">Soulprint</span>
+                      <span className="sc-tier">{tierName}</span>
+                    </div>
 
-              {/* Avatar slot → address-seeded halftone Sigil (no photo). */}
-              <div className="sc-avatar">
-                <Sigil color={tier.color} glow={tier.glow} seed={seed} />
-              </div>
+                    {/* Avatar slot → address-seeded halftone Sigil (no photo). */}
+                    <div className="sc-avatar">
+                      <Sigil color={tier.color} glow={tier.glow} seed={seed} />
+                    </div>
 
-              <div className="sc-details">
-                <h3>{d.type ?? "Unidentified Wallet"}</h3>
-                <p>
-                  {(d.archetype ?? "Wallet") + " · " + tierName}
-                </p>
-              </div>
+                    <div className="sc-details">
+                      <h3>{d.type ?? "Unidentified Wallet"}</h3>
+                      <p>{(d.archetype ?? "Wallet") + " · " + tierName}</p>
+                    </div>
 
-              <div className="sc-spacer" />
+                    <div className="sc-spacer" />
 
-              <div className="sc-userinfo">
-                <div className="sc-user-text">
-                  <span className="sc-handle">{shortAddr(wallet)}</span>
-                  <span className="sc-status">
-                    {generation !== undefined ? `gen ${generation} · ` : ""}soulbound
-                  </span>
+                    <div className="sc-userinfo">
+                      <div className="sc-user-text">
+                        <span className="sc-handle">{shortAddr(wallet)}</span>
+                        <span className="sc-status">
+                          {generation !== undefined ? `gen ${generation} · ` : ""}soulbound
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="sc-copy-btn"
+                        onClick={onCopy}
+                        disabled={!wallet}
+                      >
+                        {copied ? "Copied!" : "Copy address"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="sc-copy-btn"
-                  onClick={onCopy}
-                  disabled={!wallet}
-                >
-                  {copied ? "Copied!" : "Copy address"}
-                </button>
-              </div>
+              </section>
             </div>
           </div>
-        </section>
-      </div>
 
-      {/* ── DETAILS PANEL: the fields the card can't show ─────── */}
-      <div
-        className="panel mx-auto mt-4 w-full max-w-sm overflow-hidden rounded-2xl"
-        style={{ borderColor: tier.color + "26" }}
-      >
-        <div className="p-5 sm:p-6">
-          {d.style && (
-            <p className="text-center font-display text-base italic leading-snug text-foreground/85">
-              &ldquo;{d.style}&rdquo;
-            </p>
-          )}
+          {/* ── BACK FACE: the dossier details ────────────────── */}
+          <div className="sc-face sc-face-back">
+            <div className="sc-back-card">
+              <div className="sc-back-content">
+                <div className="sc-top">
+                  <span className="sc-brand">Dossier</span>
+                  <span className="sc-tier">{tierName}</span>
+                </div>
 
-          {/* rarity + karma */}
-          <div className="mt-5 flex items-center justify-center gap-8">
-            <div className="text-center">
-              <div className="text-[10px] uppercase tracking-[0.25em] text-soul-dim">Rarity</div>
-              <div className="mt-1 text-lg leading-none" style={{ color: tier.color }}>
-                {"★".repeat(stars || 1)}
-                <span className="text-foreground/15">{"★".repeat(5 - (stars || 1))}</span>
+                {d.style && <p className="sc-back-quote">&ldquo;{d.style}&rdquo;</p>}
+
+                <div className="sc-back-stats">
+                  <div className="sc-stat">
+                    <div className="sc-stat-label">Rarity</div>
+                    <div className="sc-stat-stars" style={{ color: tier.color }}>
+                      {"★".repeat(stars || 1)}
+                      <span style={{ color: "rgba(255,255,255,0.15)" }}>
+                        {"★".repeat(5 - (stars || 1))}
+                      </span>
+                    </div>
+                  </div>
+                  {d.karma && (
+                    <div className="sc-stat">
+                      <div className="sc-stat-label">Karma</div>
+                      <div className="sc-stat-value">{d.karma}</div>
+                    </div>
+                  )}
+                </div>
+
+                {activity !== undefined && (
+                  <div className="sc-back-meter">
+                    <ActivityMeter value={activity} color={tier.color} />
+                  </div>
+                )}
+
+                {(d.strength || d.weakness) && (
+                  <div className="sc-back-grid">
+                    {d.strength && (
+                      <div className="sc-back-box">
+                        <div className="sc-stat-label">Strength</div>
+                        <div className="sc-back-box-text">{d.strength}</div>
+                      </div>
+                    )}
+                    {d.weakness && (
+                      <div className="sc-back-box">
+                        <div className="sc-stat-label">Weakness</div>
+                        <div className="sc-back-box-text">{d.weakness}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {d.notes && <p className="sc-back-notes">{d.notes}</p>}
+
+                <div className="sc-spacer" />
+
+                <div className="sc-back-footer">
+                  <Lock /> soulbound · self-evolving
+                </div>
               </div>
             </div>
-            {d.karma && (
-              <div className="text-center">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-soul-dim">Karma</div>
-                <div className="font-display mt-1 text-lg font-bold text-foreground">{d.karma}</div>
-              </div>
-            )}
-          </div>
-
-          {activity !== undefined && (
-            <div className="mt-5">
-              <ActivityMeter value={activity} color={tier.color} />
-            </div>
-          )}
-
-          {(d.strength || d.weakness) && (
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {d.strength && (
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-soul-dim">Strength</div>
-                  <div className="mt-1 text-sm leading-snug text-foreground/85">{d.strength}</div>
-                </div>
-              )}
-              {d.weakness && (
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-soul-dim">Weakness</div>
-                  <div className="mt-1 text-sm leading-snug text-foreground/85">{d.weakness}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {d.notes && (
-            <p className="mt-5 text-center text-sm leading-relaxed text-foreground/55">{d.notes}</p>
-          )}
-
-          <div className="mt-6 flex items-center justify-center gap-1.5 border-t border-white/[0.08] pt-4 text-[11px] text-foreground/45">
-            <Lock /> soulbound · self-evolving
           </div>
         </div>
       </div>
+      <p className="sc-flip-caption">tap or swipe to flip ⟲</p>
     </div>
   );
 }

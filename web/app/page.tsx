@@ -300,7 +300,13 @@ export default function Home() {
             }}
           >
             <span className="relative z-10">
-              {busy ? "Working…" : "Read me · 1 STT"}
+              {busy
+                ? "Working…"
+                : isAddress(address) &&
+                  connected &&
+                  address.toLowerCase() !== connected.toLowerCase()
+                ? "Read this wallet · 2 STT"
+                : "Read me · 1 STT"}
             </span>
           </button>
         </div>
