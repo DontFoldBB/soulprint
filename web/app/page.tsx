@@ -21,6 +21,7 @@ import {
 } from "@/lib/soulprint";
 import { DossierCard } from "@/components/DossierCard";
 import { DossierSkeleton } from "@/components/DossierSkeleton";
+import LanyardStage from "@/components/LanyardStage";
 
 const pub = createPublicClient({ chain: somniaTestnet, transport: http() });
 
@@ -127,27 +128,55 @@ export default function Home() {
       setError("Enter a valid 0x wallet address.");
       return;
     }
-    const eth = (window as unknown as { ethereum?: unknown }).ethereum;
-    if (!eth) {
-      setError("No wallet found. Install MetaMask and add Somnia Shannon Testnet.");
-      return;
-    }
+    const wallet = address as `0x${string}`;
     try {
       setBusy(true);
+      // If this wallet already has a Soulprint, just show it — no tx, no wallet needed.
+      setStatus("Reading the chain…");
+      const existing = await readProfile(wallet);
+      if (existing) {
+        const traits = await tryTraits(wallet);
+        const dossier = parseDossier(existing.raw);
+        if (traits?.archetype && !dossier.archetype) dossier.archetype = traits.archetype;
+        setResult({ dossier, generation: existing.generation, activity: traits?.activity });
+        setStatus("");
+        return;
+      }
+      // Otherwise mint one — this needs a connected wallet.
+      const eth = (window as unknown as { ethereum?: unknown }).ethereum;
+      if (!eth) {
+        setError("No Soulprint yet for this wallet. Connect a wallet on Somnia Shannon to mint one.");
+        return;
+      }
       setStatus("Opening your wallet…");
-      const wallet = address as `0x${string}`;
       const walletClient = createWalletClient({
         chain: somniaTestnet,
         transport: custom(eth as Parameters<typeof custom>[0]),
       });
       const [from] = await walletClient.requestAddresses();
+      // Make sure the wallet is on Somnia Shannon — prompt a switch (add it if missing).
+      try {
+        const current = await walletClient.getChainId();
+        if (current !== somniaTestnet.id) {
+          setStatus("Switching your wallet to Somnia Shannon…");
+          try {
+            await walletClient.switchChain({ id: somniaTestnet.id });
+          } catch {
+            await walletClient.addChain({ chain: somniaTestnet });
+            await walletClient.switchChain({ id: somniaTestnet.id });
+          }
+        }
+      } catch {
+        /* if the wallet can't report/switch, the tx will still surface a clear error */
+      }
       const hash = await walletClient.writeContract({
         account: from,
         address: SOULPRINT_ADDRESS,
         abi: SOULPRINT_ABI,
         functionName: "read",
         args: [wallet],
-        value: parseEther("1"),
+        // 1 STT to profile your own wallet, 2 STT to profile someone else's.
+        value: parseEther(from.toLowerCase() === wallet.toLowerCase() ? "1" : "2"),
       });
       setStatus("Transaction sent — confirming on Somnia…");
       await pub.waitForTransactionReceipt({ hash });
@@ -218,7 +247,7 @@ export default function Home() {
             disabled={busy}
             className="group relative shrink-0 overflow-hidden rounded-xl px-6 py-3.5 text-sm font-bold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-60"
             style={{
-              background: "linear-gradient(100deg,#ff2d9b,#b563ff 55%,#2dd4ff)",
+              background: "linear-gradient(180deg,#ffffff,#cfcfd3)",
             }}
           >
             <span className="relative z-10">
@@ -228,7 +257,7 @@ export default function Home() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/40">
-          <span>Pays 1 STT · mints a soulbound NFT to the wallet.</span>
+          <span>1 STT for your own wallet · 2 STT for someone else · soulbound NFT mints to the target.</span>
           <button
             onClick={showSample}
             className="font-semibold text-soul-blue/80 underline-offset-4 transition hover:text-soul-blue hover:underline"
@@ -254,10 +283,18 @@ export default function Home() {
                 Sample preview — connect a wallet for the real read
               </p>
             )}
+            {/* Draggable 3D lanyard flourish — grab the card and toss it. */}
+            <div className="relative mx-auto h-[440px] w-full max-w-xl">
+              <LanyardStage />
+              <p className="pointer-events-none absolute inset-x-0 bottom-1 text-center text-[10px] uppercase tracking-[0.28em] text-foreground/30">
+                Drag the card
+              </p>
+            </div>
             <DossierCard
               d={result.dossier}
               generation={result.generation}
               activity={result.activity}
+              wallet={preview ? "0x5e1f4c2a9b8d3e7f06a1c4b2d9e8f70a3b1c2d4e" : (address as `0x${string}`)}
             />
           </div>
         )}

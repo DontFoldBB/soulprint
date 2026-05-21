@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #05030a;
-  --color-foreground: #f4f0ff;
+  --color-background: #08080a;
+  --color-foreground: #ededee;
   --font-display: var(--font-syne);
   --font-mono: var(--font-jbmono);
 
-  --color-soul-magenta: #ff2d9b;
-  --color-soul-violet: #8b5cf6;
-  --color-soul-blue: #2dd4ff;
-  --color-soul-ink: #05030a;
-  --color-soul-panel: #0c0918;
+  /* Somnia is monochrome/refined — no neon. Tokens remapped to a grayscale
+     ramp so accents read as light/contrast, not saturated hue. */
+  --color-soul-bright: #f4f4f5; /* primary highlight (near-white) */
+  --color-soul-mid: #a7a7ad;    /* secondary text */
+  --color-soul-dim: #6a6a72;    /* labels, hairlines */
+  --color-soul-panel: #101013;
+  --color-soul-ink: #08080a;
+
+  /* Legacy accent names remapped to grayscale so older markup stays monochrome */
+  --color-soul-magenta: #e9e9ea;
+  --color-soul-violet: #8d8d94;
+  --color-soul-blue: #c2c2c7;
 }
 
 :root {
-  --bg: #05030a;
-  --fg: #f4f0ff;
+  --bg: #08080a;
+  --fg: #ededee;
   color-scheme: dark;
 }
 
 * {
-  border-color: color-mix(in oklch, #8b5cf6 22%, transparent);
+  border-color: color-mix(in oklch, #ffffff 12%, transparent);
 }
 
 html,
@@ -36,27 +43,26 @@ body {
   overflow-x: hidden;
 }
 
-/* Ambient gradient-mesh atmosphere fixed behind everything */
+/* Soft monochrome vignette + faint top light — no color */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(60rem 60rem at 12% -10%, rgba(255, 45, 155, 0.18), transparent 60%),
-    radial-gradient(50rem 50rem at 95% 8%, rgba(45, 212, 255, 0.14), transparent 60%),
-    radial-gradient(70rem 70rem at 50% 120%, rgba(139, 92, 246, 0.2), transparent 60%),
-    #05030a;
+    radial-gradient(70rem 50rem at 50% -20%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(60rem 60rem at 50% 120%, rgba(255, 255, 255, 0.03), transparent 60%),
+    #08080a;
 }
 
-/* Fine grain overlay for texture */
+/* Fine grain for texture */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: 0.045;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -64,22 +70,55 @@ body::after {
   font-family: var(--font-display), system-ui, sans-serif;
 }
 
-/* Neon gradient text */
+/* Subtle silver sheen for headlines — premium, not neon */
 .text-gradient {
-  background: linear-gradient(100deg, #ff2d9b 0%, #b563ff 42%, #2dd4ff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #d6d6d9 55%, #9a9aa0 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* Thin grid lines that fade out — subtle technical backdrop */
+/* Somnia-style halftone dot field (matches their site + the brand image).
+   Dots use currentColor so a sigil can be tinted by its rarity tier. */
+.halftone {
+  background-image: radial-gradient(currentColor 1px, transparent 1.5px);
+  background-size: 7px 7px;
+}
+
+/* Faint dot grid backdrop, faded by a radial mask */
 .grid-veil {
-  background-image:
-    linear-gradient(to right, rgba(139, 92, 246, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(139, 92, 246, 0.07) 1px, transparent 1px);
-  background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent 80%);
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent 80%);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1.3px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black, transparent 78%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black, transparent 78%);
+}
+
+/* Drifting halftone "blobs" — Somnia's signature dithered shapes, slowly moving */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  color: #ffffff;
+  background-image: radial-gradient(currentColor 1px, transparent 1.6px);
+  background-size: 7px 7px;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 32%, transparent 70%);
+  mask-image: radial-gradient(circle at 50% 50%, black 32%, transparent 70%);
+  opacity: 0.07;
+  will-change: transform;
+}
+@keyframes drift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5vw, 4vh) scale(1.12); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes drift2 {
+  0% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-6vw, -3vh) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1.05); }
+}
+@keyframes drift3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-4vw, 5vh) scale(1.1); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 @keyframes float-rise {
@@ -90,53 +129,63 @@ body::after {
   animation: float-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Diagonal foil sweep — silver, gives the "collectible card" shimmer */
+@keyframes foil-sweep {
+  0% { transform: translateX(-120%) rotate(8deg); }
+  100% { transform: translateX(220%) rotate(8deg); }
+}
+.foil::after {
+  content: "";
+  position: absolute;
+  inset: -30% -60%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 45%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.14) 55%,
+    transparent 100%
+  );
+  transform: translateX(-120%) rotate(8deg);
+  animation: foil-sweep 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @keyframes sheen {
   0% { background-position: -150% 0; }
   100% { background-position: 250% 0; }
 }
-
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(255, 45, 155, 0.45); }
-  70% { box-shadow: 0 0 0 12px rgba(255, 45, 155, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 45, 155, 0); }
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.04) 70%
+  );
+  background-size: 200% 100%;
+  animation: sheen 1.6s ease-in-out infinite;
 }
-
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
-}
-.spin-slow { animation: spin-slow 1.4s linear infinite; }
 
 @keyframes scan {
   0% { transform: translateY(-100%); }
   100% { transform: translateY(900%); }
 }
 
-/* Loading shimmer for the dossier skeleton */
-.shimmer {
-  background: linear-gradient(
-    100deg,
-    rgba(139, 92, 246, 0.05) 30%,
-    rgba(139, 92, 246, 0.22) 50%,
-    rgba(139, 92, 246, 0.05) 70%
-  );
-  background-size: 200% 100%;
-  animation: sheen 1.6s ease-in-out infinite;
-}
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 1.4s linear infinite; }
 
-/* Glassy panel base */
+/* Glassy panel */
 .panel {
-  background:
-    linear-gradient(180deg, rgba(20, 14, 38, 0.85), rgba(8, 5, 18, 0.92));
+  background: linear-gradient(180deg, rgba(20, 20, 24, 0.9), rgba(10, 10, 13, 0.94));
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(139, 92, 246, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 ::selection {
-  background: rgba(255, 45, 155, 0.35);
+  background: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
 
-/* Custom range / inputs reset for crisp focus */
 input::placeholder {
-  color: rgba(244, 240, 255, 0.28);
+  color: rgba(237, 237, 238, 0.28);
 }

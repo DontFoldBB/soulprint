@@ -30,7 +30,15 @@ export default function RootLayout({
       lang="en"
       className={`${syne.variable} ${jbMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Ambient drifting halftone blobs (Somnia-style background motion) */}
+        <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: -1 }}>
+          <div className="blob" style={{ width: "36rem", height: "24rem", top: "-7rem", left: "-9rem", animation: "drift1 26s ease-in-out infinite" }} />
+          <div className="blob" style={{ width: "28rem", height: "20rem", top: "28%", right: "-8rem", animation: "drift2 34s ease-in-out infinite" }} />
+          <div className="blob" style={{ width: "32rem", height: "22rem", bottom: "-9rem", left: "22%", animation: "drift3 40s ease-in-out infinite" }} />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }
