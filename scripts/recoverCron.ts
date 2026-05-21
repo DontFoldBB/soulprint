@@ -2,7 +2,7 @@ import hre from "hardhat";
 import { formatEther } from "viem";
 
 // The first (broken) cron — stop its subscription and pull the 32 STT back.
-const OLD_CRON = "0x6eb4812e1090d4ecdeb21ebc172a56162d445f3b";
+const OLD_CRON = "0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc";
 
 async function main() {
   const pub = await hre.viem.getPublicClient();

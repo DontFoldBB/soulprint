@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { parseEther } from "viem";
 
-const SOULPRINT = "0x30e553c13eab2c125a466e2ccde228f692d36149";
+const SOULPRINT = "0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232";
 
 async function main() {
   const [wallet] = await hre.viem.getWalletClients();

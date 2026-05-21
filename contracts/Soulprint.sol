@@ -155,6 +155,16 @@ contract Soulprint is ERC721 {
             return;
         }
         uint256 txCount = abi.decode(responses[0].result, (uint256));
+
+        // Cost-gated evolution: for an existing soulprint, only re-run the (expensive) LLM
+        // and bump `generation` when the wallet's on-chain activity actually changed. The LLM
+        // is deterministic, so an unchanged tx count would just reproduce the same dossier.
+        uint256 existingId = soulprintOf[ctx.wallet];
+        if (existingId != 0 && txCount == txCountOf[existingId]) {
+            emit EvolutionSkipped(existingId);
+            return;
+        }
+
         _requestDossier(ctx.wallet, txCount);
     }
 
