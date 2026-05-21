@@ -232,4 +232,19 @@ describe("Persona", () => {
     expect(t[2]).to.equal(0n);
     expect(t[3]).to.equal(0n);
   });
+
+  it("lets the owner withdraw STT (for recycling reserve on redeploy)", async () => {
+    const { persona, deployer } = await deploy();
+    const pub = await hre.viem.getPublicClient();
+    expect(await pub.getBalance({ address: persona.address })).to.equal(parseEther("50"));
+    await persona.write.withdraw([parseEther("10")], { account: deployer.account });
+    expect(await pub.getBalance({ address: persona.address })).to.equal(parseEther("40"));
+  });
+
+  it("blocks non-owners from withdrawing", async () => {
+    const { persona, user } = await deploy();
+    await expect(
+      persona.write.withdraw([parseEther("1")], { account: user.account })
+    ).to.be.rejected;
+  });
 });

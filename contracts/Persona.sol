@@ -14,6 +14,7 @@ import {
 /// LLM write a witty "personality dossier", and mints it as a soulbound NFT.
 contract Persona is ERC721 {
     IAgentRequester public immutable platform;
+    address public immutable owner;
 
     uint256 public constant JSON_API_AGENT_ID = 13174292974160097713;
     uint256 public constant LLM_AGENT_ID = 12847293847561029384;
@@ -51,6 +52,16 @@ contract Persona is ERC721 {
 
     constructor(address platform_) ERC721("Persona", "PERSONA") {
         platform = IAgentRequester(platform_);
+        owner = msg.sender;
+    }
+
+    /// @notice Owner-only sweep of the contract's STT reserve. Lets us recycle the
+    /// agent-call / Reactivity-subscription reserve into the next deployment instead
+    /// of re-funding from scratch on every redeploy.
+    function withdraw(uint256 amount) external {
+        require(msg.sender == owner, "not owner");
+        (bool ok, ) = payable(owner).call{value: amount}("");
+        require(ok, "withdraw failed");
     }
 
     // ──────────────────────────────────────────────
