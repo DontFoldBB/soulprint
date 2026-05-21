@@ -33,6 +33,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [preview, setPreview] = useState(false);
+  const [connected, setConnected] = useState<string | null>(null);
 
   // Defensive: traitsOf may not exist on the deployed contract.
   async function tryTraits(
@@ -189,6 +190,43 @@ export default function Home() {
     }
   }
 
+  // Connect a wallet and auto-load its Soulprint — no need to type an address.
+  async function connectWallet() {
+    setError("");
+    const eth = (window as unknown as { ethereum?: unknown }).ethereum;
+    if (!eth) {
+      setError("No wallet found. Install MetaMask or Rabby.");
+      return;
+    }
+    try {
+      const walletClient = createWalletClient({
+        chain: somniaTestnet,
+        transport: custom(eth as Parameters<typeof custom>[0]),
+      });
+      const [addr] = await walletClient.requestAddresses();
+      setConnected(addr);
+      setAddress(addr);
+      setPreview(false);
+      setResult(null);
+      setBusy(true);
+      setStatus("Loading your Soulprint…");
+      const existing = await readProfile(addr);
+      if (existing) {
+        const traits = await tryTraits(addr);
+        const dossier = parseDossier(existing.raw);
+        if (traits?.archetype && !dossier.archetype) dossier.archetype = traits.archetype;
+        setResult({ dossier, generation: existing.generation, activity: traits?.activity });
+      } else {
+        setError('No Soulprint yet for this wallet — hit "Read me · 1 STT" to mint yours.');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      setStatus("");
+    }
+  }
+
   function showSample() {
     setError("");
     setBusy(false);
@@ -205,6 +243,18 @@ export default function Home() {
     <main className="relative mx-auto w-full max-w-3xl flex-1 px-5 py-12 sm:py-20">
       {/* technical grid backdrop */}
       <div aria-hidden className="grid-veil pointer-events-none absolute inset-0 -z-10" />
+
+      {/* top bar — connect wallet */}
+      <div className="relative z-10 mb-8 flex justify-end">
+        <button
+          onClick={connectWallet}
+          className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 font-mono text-xs text-foreground/80 transition hover:border-white/30 hover:text-foreground"
+        >
+          {connected
+            ? `${connected.slice(0, 6)}…${connected.slice(-4)}`
+            : "Connect Wallet"}
+        </button>
+      </div>
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <header className="rise text-center">
