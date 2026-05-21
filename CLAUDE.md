@@ -37,11 +37,15 @@ Biggest remaining risk: **live Cron autonomy proof (criterion #4) not yet done.*
   to be replaced by a designed version, see Conventions.)
 - ✅ All committed **locally** — **no GitHub remote yet** (must push to a public repo before
   submission).
-- **Current deployed address:** `0x0b8912155847fc7c1570e0dd5cd37fe0837966a1`
-  (will change on the next contract redeploy — e.g. when Cron is added; then update
-  `web/lib/soulprint.ts` `SOULPRINT_ADDRESS`).
-- **Burner wallet (testnet only):** `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`, ~33 STT
-  left. Private key is in `.env` (gitignored). NEVER use a real-money wallet here.
+- **Current deployed Soulprint:** `0x30e553c13eab2c125a466e2ccde228f692d36149`
+  (redeployed 2026-05-21 with structured dossier + Cron-ready surface; address propagated
+  to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`, `scripts/smokeTest.ts`).
+- **Live SoulprintCron:** `0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc` — **autonomy criterion #4
+  PROVEN live**: ticks self-reschedule and `generation` rises with no human tx. Holds ~40 STT.
+  Lesson: cron must hold **>32 STT** (the in-handler reschedule re-checks the 32-STT minimum
+  after paying tick gas) and `maxFeePerGas` must be **> base fee** (0 → callback never mined).
+- **Burner wallet (testnet only):** `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`. Topped up to
+  ~84 STT on 2026-05-21. Private key is in `.env` (gitignored). NEVER use a real-money wallet here.
 
 ## Quick commands
 

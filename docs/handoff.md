@@ -4,6 +4,26 @@
 > and what's left. Pairs with `CLAUDE.md` (project context), `docs/reference/somnia-agents-guide.md`
 > (Agents+Reactivity reference), `docs/plans/2026-05-20-road-to-top.md`, `docs/economics.md`.
 
+## ⟶ UPDATE 2026-05-21 (later session) — REDEPLOYED + CRON LIVE
+
+- **Soulprint redeployed:** `0x30e553c13eab2c125a466e2ccde228f692d36149` (new structured build,
+  seeded 3 STT). Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`,
+  `scripts/smokeTest.ts`. Old `0x0b89…66a1` is now retired.
+- **🎉 SoulprintCron LIVE — autonomy criterion #4 PROVEN:** `0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc`
+  (holds ~40 STT, 30s interval). Ticks fire and self-reschedule with NO human tx; `generation`
+  rose 1→2→3… on its own. Scripts: `scripts/deployCron.ts`, `restartCron.ts`, `recoverCron.ts`,
+  `watchCron.ts`, `inspectSub.ts`. Two bugs were fixed to get here:
+  1. `maxFeePerGas: 0` → scheduled callback never mined (must be ≥ base fee ~6 gwei). Now 50 gwei.
+  2. Funding cron with **exactly 32 STT** → the in-handler `_scheduleNext()` re-checks the 32-STT
+     minimum, but tick gas dropped balance below 32 → revert rolled back the whole tick. Fund **>32**.
+- **Frontend is now TWO tabs** (was a single page): `/` = Mint (lookup/mint any wallet — input always
+  visible — + result card + live activity feed) and `/dashboard` = System overview stats + your
+  Soulprint (big-ish) + Evolution timeline + **Watching** (localStorage follow-list) + Leaderboard.
+  Foreign cards open in a **modal** (CardModal), not in place. Card front now shows Activity/Txns/Gen.
+  New libs: `lib/wallet.ts`, `lib/profile.ts`, `lib/dashboard.ts`, `lib/tiers.ts`, `lib/watchlist.ts`.
+  The dashboard reads the new contract, so it shows REAL live data (minted count, autonomous evolutions).
+- **Old (now-stale) lines below** ("needs redeploy", criterion #4 not proven) are superseded by this block.
+
 ## What Soulprint is
 A soulbound (ERC-5192), self-evolving on-chain identity for a wallet, for the Encode × Somnia
 Agentathon. On-chain Somnia agents (JSON API → on-chain LLM) read a wallet's history into a witty
