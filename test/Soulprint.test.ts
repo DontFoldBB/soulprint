@@ -248,6 +248,23 @@ describe("Soulprint", () => {
     ).to.be.rejected;
   });
 
+  it("SoulprintCron deploys, stores params, and gates onEvent to the precompile", async () => {
+    const { soulprint, user } = await deploy();
+    const cron = await hre.viem.deployContract("SoulprintCron", [soulprint.address, 60n, 5n]);
+    expect(getAddress(await cron.read.soulprint())).to.equal(getAddress(soulprint.address));
+    expect(await cron.read.intervalSeconds()).to.equal(60n);
+    expect(await cron.read.batchSize()).to.equal(5n);
+    expect(await cron.read.ticks()).to.equal(0n);
+
+    // onEvent is privileged: only the reactivity precompile (0x0100) may invoke it
+    await expect(
+      cron.write.onEvent(
+        ["0x0000000000000000000000000000000000000000", [], "0x"],
+        { account: user.account }
+      )
+    ).to.be.rejected;
+  });
+
   it("evolveBatch re-runs the pipeline for a minted wallet (autonomous evolution)", async () => {
     const { soulprint, platform, user } = await deploy();
     await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
