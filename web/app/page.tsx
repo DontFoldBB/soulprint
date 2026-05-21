@@ -19,7 +19,7 @@ import {
   SAMPLE_ACTIVITY,
   SAMPLE_GENERATION,
 } from "@/lib/soulprint";
-import { DossierCard } from "@/components/DossierCard";
+import { SoulCard } from "@/components/SoulCard";
 import { DossierSkeleton } from "@/components/DossierSkeleton";
 
 const pub = createPublicClient({ chain: somniaTestnet, transport: http() });
@@ -282,7 +282,7 @@ export default function Home() {
                 Sample preview — connect a wallet for the real read
               </p>
             )}
-            <DossierCard
+            <SoulCard
               d={result.dossier}
               generation={result.generation}
               activity={result.activity}

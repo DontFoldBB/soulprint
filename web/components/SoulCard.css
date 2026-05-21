@@ -1,0 +1,355 @@
+/* SoulCard — adapted from React Bits "ProfileCard" (holographic cursor-tilt card).
+   Toned for Soulprint: dark near-black base, restrained silver/tier-hued shine
+   instead of a full neon rainbow. Tilt + shine MOTION preserved.
+   Pure CSS — no dependencies. Theming via CSS custom properties set inline:
+     --inner-gradient, --behind-glow-color, --tier-color (per rarity tier). */
+
+:root {
+  --sc-pointer-x: 50%;
+  --sc-pointer-y: 50%;
+  --sc-pointer-from-center: 0;
+  --sc-pointer-from-top: 0.5;
+  --sc-pointer-from-left: 0.5;
+  --sc-card-opacity: 0;
+  --sc-rotate-x: 0deg;
+  --sc-rotate-y: 0deg;
+  --sc-bg-x: 50%;
+  --sc-bg-y: 50%;
+}
+
+.sc-wrapper {
+  --tier-color: #8b9099;
+  --behind-glow-color: rgba(139, 144, 153, 0.5);
+  --inner-gradient: linear-gradient(145deg, #14141a 0%, #08080a 100%);
+
+  perspective: 520px;
+  transform: translate3d(0, 0, 0.1px);
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+/* Behind-glow: a soft tier-tinted halo that brightens as the cursor nears center */
+.sc-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  background: radial-gradient(
+    farthest-side circle at var(--sc-pointer-x) var(--sc-pointer-y),
+    var(--behind-glow-color) 8%,
+    transparent 60%
+  );
+  border-radius: inherit;
+  filter: blur(28px) saturate(120%);
+  transform: translate3d(0, 0, -1px) scale(0.92);
+  opacity: calc(var(--sc-card-opacity) * 0.65 + 0.12);
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.sc-card {
+  position: relative;
+  height: auto;
+  aspect-ratio: 0.78;
+  border-radius: 28px;
+  background-blend-mode: color-dodge, normal, normal, normal;
+  box-shadow: 0 30px 80px -30px var(--behind-glow-color), 0 8px 30px rgba(0, 0, 0, 0.6);
+  transition: transform 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transform: translate3d(0, 0, 0.1px) rotateX(0deg) rotateY(0deg);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 26%, transparent);
+  overflow: hidden;
+}
+
+.sc-wrapper.active .sc-card,
+.sc-card.active {
+  transition: none;
+  transform: translate3d(0, 0, 0.1px) rotateX(var(--sc-rotate-y)) rotateY(var(--sc-rotate-x));
+}
+
+.sc-card * {
+  display: grid;
+  grid-area: 1 / 1;
+  border-radius: 28px;
+  transform: translate3d(0, 0, 0.1px);
+  pointer-events: none;
+}
+
+.sc-inside {
+  inset: 1px;
+  position: absolute;
+  background-image: var(--inner-gradient);
+  background-color: #08080a;
+  transform: translate3d(0, 0, 0.01px);
+}
+
+/* Holographic shine — biased to white/silver + a hint of the tier hue (not neon).
+   Low opacity keeps it restrained per Somnia's monochrome aesthetic. */
+.sc-shine {
+  mask-image: none;
+  transition: filter 0.6s ease;
+  filter: brightness(0.6) contrast(1.4) saturate(0.5);
+  animation: sc-holo-bg 18s linear infinite;
+  mix-blend-mode: color-dodge;
+  opacity: 0.55;
+}
+
+.sc-shine,
+.sc-shine::after {
+  --sun-x: var(--sc-bg-x);
+  --sun-y: var(--sc-bg-y);
+  /* Subtle "sunpillar" — silver-leaning, with a faint tier-color glint */
+  --sunpillar-1: rgba(255, 255, 255, 0.5);
+  --sunpillar-2: color-mix(in srgb, var(--tier-color) 60%, white);
+  --sunpillar-3: rgba(220, 220, 226, 0.45);
+  --sunpillar-4: color-mix(in srgb, var(--tier-color) 45%, white);
+  --sunpillar-5: rgba(245, 245, 248, 0.5);
+  --sunpillar-6: color-mix(in srgb, var(--tier-color) 70%, white);
+
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      var(--sunpillar-1) calc(var(--sc-pointer-from-left) * 1%),
+      var(--sunpillar-2) calc(var(--sc-pointer-from-left) * 2%),
+      var(--sunpillar-3) calc(var(--sc-pointer-from-left) * 3%),
+      var(--sunpillar-4) calc(var(--sc-pointer-from-left) * 4%),
+      var(--sunpillar-5) calc(var(--sc-pointer-from-left) * 5%),
+      var(--sunpillar-6) calc(var(--sc-pointer-from-left) * 6%),
+      var(--sunpillar-1) calc(var(--sc-pointer-from-left) * 7%)
+    ),
+    repeating-linear-gradient(
+      133deg,
+      #0a0a0c 0%,
+      rgba(255, 255, 255, 0.18) 3.8%,
+      #0a0a0c 4.5%,
+      #0a0a0c 4.6%,
+      rgba(255, 255, 255, 0.14) 10%,
+      #0a0a0c 12%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--sc-pointer-x) var(--sc-pointer-y),
+      rgba(255, 255, 255, 0.12) 12%,
+      rgba(20, 20, 26, 0.15) 90%
+    );
+  background-position:
+    0 var(--sun-y),
+    var(--sun-x) var(--sun-y),
+    center;
+  background-blend-mode: color, hard-light;
+  background-size: 500% 500%, 300% 300%, 200% 200%;
+  background-repeat: repeat;
+}
+
+.sc-shine::before,
+.sc-shine::after {
+  content: "";
+  background-position: center;
+  background-size: cover;
+  grid-area: 1 / 1;
+  opacity: 0;
+}
+
+.sc-card.active .sc-shine,
+.sc-wrapper.active .sc-shine {
+  filter: brightness(0.75) contrast(1.5) saturate(0.7);
+  animation: none;
+  opacity: 0.7;
+}
+
+.sc-card.active .sc-shine::before,
+.sc-wrapper.active .sc-shine::before {
+  opacity: 1;
+  background-image:
+    linear-gradient(
+      45deg,
+      var(--tier-color),
+      rgba(255, 255, 255, 0.4),
+      var(--tier-color)
+    ),
+    radial-gradient(
+      circle at var(--sc-pointer-x) var(--sc-pointer-y),
+      rgba(255, 255, 255, 0.7) 0%,
+      rgba(120, 120, 130, 0.2) 30%,
+      transparent 70%
+    );
+  background-size: 250% 250%, 100% 100%;
+  background-position: var(--sc-pointer-x) var(--sc-pointer-y), center;
+  background-blend-mode: overlay;
+  filter: brightness(1.2) contrast(1.1);
+  mix-blend-mode: soft-light;
+  opacity: calc(var(--sc-pointer-from-center) * 0.55);
+}
+
+/* Glare — a soft round highlight that follows the cursor */
+.sc-glare {
+  transform: translate3d(0, 0, 1.1px);
+  overflow: hidden;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--sc-pointer-x) var(--sc-pointer-y),
+    rgba(255, 255, 255, 0.22) 8%,
+    rgba(255, 255, 255, 0.08) 24%,
+    rgba(8, 8, 10, 0.55) 90%
+  );
+  mix-blend-mode: overlay;
+  filter: brightness(0.9) contrast(1.1);
+  opacity: calc(var(--sc-pointer-from-center) * 0.6 + 0.05);
+}
+
+.sc-content {
+  transform: translate3d(0, 0, 1.3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1.5rem 1.25rem;
+  pointer-events: none;
+  gap: 0;
+}
+
+.sc-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.sc-brand {
+  font-family: var(--font-syne), system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: rgba(237, 237, 238, 0.8);
+}
+
+.sc-tier {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  color: var(--tier-color);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 50%, transparent);
+  background: color-mix(in srgb, var(--tier-color) 10%, transparent);
+}
+
+.sc-avatar {
+  margin-top: 1.4rem;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.sc-details {
+  margin-top: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sc-details h3 {
+  margin: 0;
+  font-family: var(--font-syne), system-ui, sans-serif;
+  font-size: 1.7rem;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #ffffff 0%, var(--tier-color) 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sc-details p {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(167, 167, 173, 0.9);
+}
+
+.sc-spacer {
+  flex: 1 1 auto;
+  min-height: 0.75rem;
+}
+
+/* Bottom user-info bar (handle / status / copy button) */
+.sc-userinfo {
+  margin-top: 1rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.sc-userinfo * {
+  pointer-events: auto;
+}
+
+.sc-user-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.sc-handle {
+  font-family: var(--font-jbmono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: rgba(237, 237, 238, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 11rem;
+}
+
+.sc-status {
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: rgba(106, 106, 114, 0.95);
+  white-space: nowrap;
+}
+
+.sc-copy-btn {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--tier-color);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 45%, transparent);
+  background: color-mix(in srgb, var(--tier-color) 12%, transparent);
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.sc-copy-btn:hover {
+  background: color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+
+.sc-copy-btn:active {
+  transform: scale(0.96);
+}
+
+@keyframes sc-holo-bg {
+  0% { background-position: 0 var(--sc-bg-y), 0 0, center; }
+  100% { background-position: 0 var(--sc-bg-y), 90% 90%, center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-card { transition: none; }
+  .sc-shine { animation: none; }
+}
