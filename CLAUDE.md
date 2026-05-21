@@ -37,13 +37,16 @@ Biggest remaining risk: **live Cron autonomy proof (criterion #4) not yet done.*
   to be replaced by a designed version, see Conventions.)
 - ✅ All committed **locally** — **no GitHub remote yet** (must push to a public repo before
   submission).
-- **Current deployed Soulprint:** `0x30e553c13eab2c125a466e2ccde228f692d36149`
-  (redeployed 2026-05-21 with structured dossier + Cron-ready surface; address propagated
-  to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`, `scripts/smokeTest.ts`).
-- **Live SoulprintCron:** `0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc` — **autonomy criterion #4
-  PROVEN live**: ticks self-reschedule and `generation` rises with no human tx. Holds ~40 STT.
-  Lesson: cron must hold **>32 STT** (the in-handler reschedule re-checks the 32-STT minimum
-  after paying tick gas) and `maxFeePerGas` must be **> base fee** (0 → callback never mined).
+- **Current deployed Soulprint:** `0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232`
+  (redeployed 2026-05-21 — structured dossier + **cost-gated evolution**: `handleStats` skips the
+  LLM + `generation` bump when `tx_count` is unchanged, so a soulprint only re-evolves on real
+  on-chain activity. Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`,
+  `scripts/{smokeTest,deployCron,watchCron,evolveOnce}.ts`). Earlier 0x30e5… / 0x0b89… retired.
+- **Live SoulprintCron:** `0x9eefd1e11cf7e813d1bb62ed52a105a1cb46da1d` — **autonomy criterion #4
+  PROVEN live** (verified at 30s interval: ticks self-reschedule, `generation` rose with no human
+  tx). Now set to a **30-min** interval, batch 5, holds ~40 STT. Owner can retune via `setParams`.
+  Lessons: cron must hold **>32 STT** (the in-handler reschedule re-checks the 32-STT minimum after
+  paying tick gas) and `maxFeePerGas` must be **> base fee** (0 → callback never mined).
 - **Burner wallet (testnet only):** `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`. Topped up to
   ~84 STT on 2026-05-21. Private key is in `.env` (gitignored). NEVER use a real-money wallet here.
 

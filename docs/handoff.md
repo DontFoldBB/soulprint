@@ -6,13 +6,16 @@
 
 ## ⟶ UPDATE 2026-05-21 (later session) — REDEPLOYED + CRON LIVE
 
-- **Soulprint redeployed:** `0x30e553c13eab2c125a466e2ccde228f692d36149` (new structured build,
-  seeded 3 STT). Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`,
-  `scripts/smokeTest.ts`. Old `0x0b89…66a1` is now retired.
-- **🎉 SoulprintCron LIVE — autonomy criterion #4 PROVEN:** `0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc`
-  (holds ~40 STT, 30s interval). Ticks fire and self-reschedule with NO human tx; `generation`
-  rose 1→2→3… on its own. Scripts: `scripts/deployCron.ts`, `restartCron.ts`, `recoverCron.ts`,
-  `watchCron.ts`, `inspectSub.ts`. Two bugs were fixed to get here:
+- **Soulprint (CURRENT):** `0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232` — adds **cost-gated
+  evolution** (skips LLM + `generation` bump when `tx_count` unchanged → re-evolves only on real
+  activity; verified live: an idle re-evolve emitted `EvolutionSkipped`, gen stayed 1). Seeded 3 STT.
+  Earlier builds `0x30e5…36149` and `0x0b89…66a1` are retired. Address is in `web/lib/soulprint.ts`,
+  `mcp/src/soulprint.ts`, `scripts/{smokeTest,deployCron,watchCron,evolveOnce}.ts`.
+- **🎉 SoulprintCron LIVE — autonomy criterion #4 PROVEN:** current `0x9eefd1e11cf7e813d1bb62ed52a105a1cb46da1d`
+  (~40 STT, now **30-min** interval, batch 5). Autonomy was verified at a 30s interval on the prior
+  build: ticks fired and self-rescheduled with NO human tx and `generation` rose 1→2→3 on its own.
+  `setParams(interval, batch)` retunes cadence. Scripts: `scripts/deployCron.ts`, `restartCron.ts`,
+  `recoverCron.ts`, `watchCron.ts`, `inspectSub.ts`, `evolveOnce.ts`. Two bugs were fixed to get here:
   1. `maxFeePerGas: 0` → scheduled callback never mined (must be ≥ base fee ~6 gwei). Now 50 gwei.
   2. Funding cron with **exactly 32 STT** → the in-handler `_scheduleNext()` re-checks the 32-STT
      minimum, but tick gas dropped balance below 32 → revert rolled back the whole tick. Fund **>32**.
