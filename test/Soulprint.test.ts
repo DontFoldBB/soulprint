@@ -247,4 +247,52 @@ describe("Soulprint", () => {
       soulprint.write.withdraw([parseEther("1")], { account: user.account })
     ).to.be.rejected;
   });
+
+  it("evolveBatch re-runs the pipeline for a minted wallet (autonomous evolution)", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+    expect(await soulprint.read.generation([tokenId])).to.equal(1n);
+
+    // simulate a scheduler/cron tick — evolveBatch is permissionless
+    await soulprint.write.evolveBatch([1n]);
+    await platform.write.deliver([3n, statsResult(250n), Success]);
+    await platform.write.deliver([4n, dossierResult("TYPE: Power Trader, Type IV\nARCHETYPE: Power User\nRARITY: 5"), Success]);
+
+    expect(await soulprint.read.generation([tokenId])).to.equal(2n);
+    expect(await soulprint.read.activityScore([tokenId])).to.equal(80n); // 250 -> 200..999 bucket
+  });
+
+  it("evolveBatch skips (no revert) when the reserve can't fund a pipeline", async () => {
+    const { soulprint, platform, user, deployer } = await deploy();
+    const pub = await hre.viem.getPublicClient();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+
+    // drain the reserve so a full pipeline can't be funded
+    const bal = await pub.getBalance({ address: soulprint.address });
+    await soulprint.write.withdraw([bal], { account: deployer.account });
+
+    await soulprint.write.evolveBatch([1n]); // must not revert
+    expect(await soulprint.read.generation([tokenId])).to.equal(1n); // unchanged (skipped)
+  });
+
+  it("evolveBatch advances a round-robin cursor across wallets", async () => {
+    const { soulprint, platform, user, deployer } = await deploy();
+    // mint for two wallets (user + deployer)
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    await soulprint.write.read([deployer.account.address], { value: parseEther("1"), account: deployer.account });
+    await platform.write.deliver([3n, statsResult(87n), Success]);
+    await platform.write.deliver([4n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+    expect(await soulprint.read.evolveCursor()).to.equal(0n);
+    await soulprint.write.evolveBatch([1n]); // evolves wallet[0], cursor -> 1
+    expect(await soulprint.read.evolveCursor()).to.equal(1n);
+  });
 });

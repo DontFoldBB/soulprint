@@ -43,12 +43,14 @@ contract Soulprint is ERC721 {
     address[] public registeredWallets;
     uint256 public totalSoulprints;
     uint256 public freeMintsRemaining = 100;
+    uint256 public evolveCursor;                      // round-robin pointer for evolveBatch
 
     event ReadFailed(address indexed wallet, string stage);
     event SoulprintMinted(address indexed wallet, uint256 indexed tokenId);
     event DossierUpdated(uint256 indexed tokenId, uint256 generation);
     event Locked(uint256 tokenId);
     event ProfileRequested(address indexed requester, address indexed wallet);
+    event EvolutionSkipped(uint256 indexed tokenId);
 
     constructor(address platform_) ERC721("Soulprint", "SOUL") {
         platform = IAgentRequester(platform_);
@@ -276,6 +278,35 @@ contract Soulprint is ERC721 {
         bytes memory out = new bytes(end - pos);
         for (uint256 k = 0; k < out.length; k++) out[k] = t[pos + k];
         return string(out);
+    }
+
+    // ──────────────────────────────────────────────
+    // Autonomous evolution
+    // ──────────────────────────────────────────────
+
+    /// @notice Permissionless tick: re-runs the read→dossier pipeline for up to
+    /// `count` registered wallets, round-robin via `evolveCursor`. Invoked by the
+    /// Cron handler (autonomous) or by anyone as a fallback. Skips a wallet (no revert)
+    /// when the reserve can't fund a full pipeline, so a tick never half-fails.
+    function evolveBatch(uint256 count) public {
+        uint256 total = registeredWallets.length;
+        if (total == 0) return;
+        if (count > total) count = total;
+
+        uint256 needed = 2 * platform.getRequestDeposit()
+            + (JSON_PRICE_PER_AGENT + LLM_PRICE_PER_AGENT) * SUBCOMMITTEE;
+
+        uint256 cursor = evolveCursor;
+        for (uint256 i = 0; i < count; i++) {
+            address wallet = registeredWallets[cursor];
+            if (address(this).balance >= needed) {
+                _requestStats(wallet); // handleDossier updates in place (soulprintOf != 0)
+            } else {
+                emit EvolutionSkipped(soulprintOf[wallet]);
+            }
+            cursor = cursor + 1 >= total ? 0 : cursor + 1;
+        }
+        evolveCursor = cursor;
     }
 
     // ──────────────────────────────────────────────
