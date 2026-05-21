@@ -248,6 +248,33 @@ describe("Soulprint", () => {
     ).to.be.rejected;
   });
 
+  it("ExampleGate: a wallet with enough activity can enter (NFT-as-access)", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]); // activity 60
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+    const gate = await hre.viem.deployContract("ExampleGate", [soulprint.address, 60n]);
+    await gate.write.enter({ account: user.account });
+    expect(await gate.read.entered([user.account.address])).to.equal(true);
+  });
+
+  it("ExampleGate: a wallet with no Soulprint is rejected", async () => {
+    const { soulprint, user } = await deploy();
+    const gate = await hre.viem.deployContract("ExampleGate", [soulprint.address, 60n]);
+    await expect(gate.write.enter({ account: user.account })).to.be.rejected;
+  });
+
+  it("ExampleGate: activity below the threshold is rejected", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(5n), Success]); // activity 20 < 60
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+    const gate = await hre.viem.deployContract("ExampleGate", [soulprint.address, 60n]);
+    await expect(gate.write.enter({ account: user.account })).to.be.rejected;
+  });
+
   it("SoulprintCron deploys, stores params, and gates onEvent to the precompile", async () => {
     const { soulprint, user } = await deploy();
     const cron = await hre.viem.deployContract("SoulprintCron", [soulprint.address, 60n, 5n]);
