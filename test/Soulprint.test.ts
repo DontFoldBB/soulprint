@@ -24,23 +24,23 @@ function dossierResult(text: string) {
 async function deploy() {
   const [deployer, user] = await hre.viem.getWalletClients();
   const platform = await hre.viem.deployContract("MockAgentPlatform");
-  const persona = await hre.viem.deployContract("Persona", [platform.address]);
+  const persona = await hre.viem.deployContract("Soulprint", [platform.address]);
   // seed the contract reserve so it can fund agent deposits + refunds
   await deployer.sendTransaction({ to: persona.address, value: parseEther("50") });
   return { platform, persona, user, deployer };
 }
 
-describe("Persona", () => {
+describe("Soulprint", () => {
   it("read() creates a JSON API stats request", async () => {
     const { persona, platform, user } = await deploy();
     await persona.write.read([user.account.address], {
       value: parseEther("1"),
       account: user.account,
     });
-    const p = await platform.read.pending([1n]);
+    const pend = await platform.read.pending([1n]);
     // tuple: [callbackAddress, callbackSelector, agentId, payload, exists]
-    expect(p[4]).to.equal(true);
-    expect(p[2]).to.equal(JSON_API_AGENT_ID);
+    expect(pend[4]).to.equal(true);
+    expect(pend[2]).to.equal(JSON_API_AGENT_ID);
   });
 
   it("read() rejects underpayment", async () => {
@@ -68,7 +68,7 @@ describe("Persona", () => {
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
 
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
     expect(tokenId).to.equal(1n);
     expect(getAddress(await persona.read.ownerOf([tokenId]))).to.equal(getAddress(user.account.address));
     expect(await persona.read.dossier([tokenId])).to.equal(SAMPLE_DOSSIER);
@@ -80,7 +80,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
 
     expect(await persona.read.locked([tokenId])).to.equal(true);
     await expect(
@@ -107,7 +107,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
     const uri = await persona.read.tokenURI([tokenId]);
     expect(uri.startsWith("data:application/json;base64,")).to.equal(true);
   });
@@ -126,7 +126,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
 
     await persona.write.reread([tokenId], { account: user.account });
     await platform.write.deliver([3n, statsResult(200n), Success]);
@@ -152,7 +152,7 @@ describe("Persona", () => {
     const { persona, platform, user } = await deploy();
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(0n), Failed]);
-    expect(await persona.read.personaOf([user.account.address])).to.equal(0n);
+    expect(await persona.read.soulprintOf([user.account.address])).to.equal(0n);
   });
 
   it("does not mint on a timed-out dossier response", async () => {
@@ -160,7 +160,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(""), TimedOut]);
-    expect(await persona.read.personaOf([user.account.address])).to.equal(0n);
+    expect(await persona.read.soulprintOf([user.account.address])).to.equal(0n);
   });
 
   it("computes a deterministic on-chain activity score from tx count", async () => {
@@ -168,7 +168,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]); // 50..199 bucket -> 60
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
     expect(await persona.read.activityScore([tokenId])).to.equal(60n);
   });
 
@@ -179,7 +179,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(dossier), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
     expect(await persona.read.archetypeOf([tokenId])).to.equal("DeFi User");
   });
 
@@ -188,7 +188,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
     expect(await persona.read.archetypeOf([tokenId])).to.equal("");
   });
 
@@ -198,7 +198,7 @@ describe("Persona", () => {
     await persona.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]); // activity 60
     await platform.write.deliver([2n, dossierResult(dossier), Success]);
-    const tokenId = await persona.read.personaOf([user.account.address]);
+    const tokenId = await persona.read.soulprintOf([user.account.address]);
 
     const uri = await persona.read.tokenURI([tokenId]);
     const json = JSON.parse(Buffer.from(uri.split(",")[1], "base64").toString("utf8"));

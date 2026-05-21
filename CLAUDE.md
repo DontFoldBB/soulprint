@@ -28,7 +28,7 @@ are in ENGLISH.**
   submission).
 - **Current deployed address:** `0x0b8912155847fc7c1570e0dd5cd37fe0837966a1`
   (will change on the next contract redeploy — e.g. when Cron is added; then update
-  `web/lib/persona.ts` `PERSONA_ADDRESS`).
+  `web/lib/soulprint.ts` `SOULPRINT_ADDRESS`).
 - **Burner wallet (testnet only):** `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`, ~33 STT
   left. Private key is in `.env` (gitignored). NEVER use a real-money wallet here.
 
@@ -48,16 +48,17 @@ cd web && npm run build          # production build (catches TS errors)
 
 ## Architecture & key files
 
-- `contracts/Persona.sol` — main contract (read pipeline, soulbound mint, dynamic tokenURI,
-  refund, reread, profileOf). NOTE: contract is still named `Persona` in code; product brand
-  is "Soulprint" — renaming code is optional/cosmetic, low priority.
+- `contracts/Soulprint.sol` — main contract (read pipeline, soulbound mint, dynamic tokenURI,
+  refund, reread, profileOf, traitsOf, activityScore, withdraw). Renamed from `Persona` →
+  `Soulprint` on 2026-05-21 (contract/file/NFT name/symbol = Soulprint/SOUL; mapping `soulprintOf`,
+  event `SoulprintMinted`).
 - `contracts/interfaces/ISomniaAgents.sol` — Somnia Agents platform + agent interfaces/structs.
 - `contracts/mocks/MockAgentPlatform.sol` — synchronous platform stand-in for tests
   (`deliver(requestId, result, status)` invokes the callback).
-- `test/Persona.test.ts` — unit tests (viem + hardhat).
+- `test/Soulprint.test.ts` — unit tests (viem + hardhat).
 - `scripts/deploy.ts`, `scripts/smokeTest.ts`, `scripts/checkExplorerApi.mjs` (spike).
 - `web/` — Next.js 16 frontend (`app/page.tsx`, `components/DossierCard.tsx`,
-  `lib/chain.ts`, `lib/persona.ts`).
+  `lib/chain.ts`, `lib/soulprint.ts`).
 - `docs/specs/2026-05-20-persona-design.md` — design spec (has branding/tone/scope decisions).
 - `docs/plans/2026-05-20-persona-mvp.md` — task-by-task implementation plan (Tasks 0–19;
   resolved spike findings for explorer API and Reactivity API are recorded inside it).

@@ -66,7 +66,9 @@ reputation, matchmaking).
 | Somnia Agents platform | `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776` |
 | Agents used | JSON API Request (`13174…`) + LLM Inference / Qwen3-30B (`12847…`) |
 
-> The contract is named `Persona` in code; **Soulprint** is the product brand.
+> The contract, its file, and the NFT name/symbol are all **Soulprint** / **SOUL**. (The currently
+> deployed address above predates the rename + structured-dossier upgrade — it will be replaced on
+> the next redeploy.)
 
 ---
 
@@ -110,7 +112,7 @@ handled.
 | `profileOf(address wallet) → (tokenId, dossier, generation)` | **Agent-composable** one-call read. |
 | `tokenURI(uint256)` | Fully on-chain, regenerated metadata + dossier per generation. |
 | `locked(uint256) → true` / `_update` revert | ERC-5192 soulbound: profiles can't be transferred. |
-| `ProfileRequested`, `PersonaMinted`, `DossierUpdated`, `Locked` | Events for indexers / agents / timeline. |
+| `ProfileRequested`, `SoulprintMinted`, `DossierUpdated`, `Locked` | Events for indexers / agents / timeline. |
 
 ---
 

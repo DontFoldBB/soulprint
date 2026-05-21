@@ -12,17 +12,17 @@ async function main() {
   console.log("Deployer:", wallet.account.address);
   console.log("Balance :", formatEther(bal), "STT");
 
-  console.log("Deploying Persona...");
-  const persona = await hre.viem.deployContract("Persona", [PLATFORM]);
-  console.log("Persona deployed at:", persona.address);
+  console.log("Deploying Soulprint...");
+  const soulprint = await hre.viem.deployContract("Soulprint", [PLATFORM]);
+  console.log("Soulprint deployed at:", soulprint.address);
 
   console.log(`Seeding reserve with ${formatEther(SEED)} STT...`);
-  const hash = await wallet.sendTransaction({ to: persona.address, value: SEED });
+  const hash = await wallet.sendTransaction({ to: soulprint.address, value: SEED });
   await pub.waitForTransactionReceipt({ hash });
 
-  const contractBal = await pub.getBalance({ address: persona.address });
+  const contractBal = await pub.getBalance({ address: soulprint.address });
   console.log("Contract reserve:", formatEther(contractBal), "STT");
-  console.log("\nDONE. Set PERSONA_ADDRESS in web/lib/persona.ts to:", persona.address);
+  console.log("\nDONE. Set SOULPRINT_ADDRESS in web/lib/soulprint.ts to:", soulprint.address);
 }
 
 main().catch((e) => {

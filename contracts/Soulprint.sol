@@ -9,10 +9,10 @@ import {
     Response, Request, ResponseStatus
 } from "./interfaces/ISomniaAgents.sol";
 
-/// @title PERSONA — a self-updating dynamic NFT.
+/// @title Soulprint — a self-updating dynamic NFT.
 /// @notice Reads a wallet's on-chain activity via Somnia Agents, has an on-chain
-/// LLM write a witty "personality dossier", and mints it as a soulbound NFT.
-contract Persona is ERC721 {
+/// LLM write a witty "identity dossier", and mints it as a soulbound NFT.
+contract Soulprint is ERC721 {
     IAgentRequester public immutable platform;
     address public immutable owner;
 
@@ -34,23 +34,23 @@ contract Persona is ERC721 {
 
     mapping(uint256 => Ctx) internal requests; // agent requestId -> ctx
 
-    mapping(address => uint256) public personaOf;     // wallet -> tokenId (0 = none)
+    mapping(address => uint256) public soulprintOf;   // wallet -> tokenId (0 = none)
     mapping(uint256 => string)  public dossier;       // tokenId -> dossier text
     mapping(uint256 => uint256) public txCountOf;     // tokenId -> tx count at last update
     mapping(uint256 => uint256) public generation;    // tokenId -> version
     mapping(uint256 => uint256) public lastUpdated;   // tokenId -> timestamp
     mapping(address => uint256) public paidByWallet;  // escrowed mint amount
     address[] public registeredWallets;
-    uint256 public totalPersonas;
+    uint256 public totalSoulprints;
     uint256 public freeMintsRemaining = 100;
 
     event ReadFailed(address indexed wallet, string stage);
-    event PersonaMinted(address indexed wallet, uint256 indexed tokenId);
+    event SoulprintMinted(address indexed wallet, uint256 indexed tokenId);
     event DossierUpdated(uint256 indexed tokenId, uint256 generation);
     event Locked(uint256 tokenId);
     event ProfileRequested(address indexed requester, address indexed wallet);
 
-    constructor(address platform_) ERC721("Persona", "PERSONA") {
+    constructor(address platform_) ERC721("Soulprint", "SOUL") {
         platform = IAgentRequester(platform_);
         owner = msg.sender;
     }
@@ -71,7 +71,7 @@ contract Persona is ERC721 {
     /// @notice First read of a wallet: kicks off the agent pipeline, mints on completion.
     function read(address wallet) external payable {
         require(msg.value >= MINT_PRICE, "underpaid");
-        require(personaOf[wallet] == 0, "already read");
+        require(soulprintOf[wallet] == 0, "already read");
         paidByWallet[wallet] = msg.value;
         emit ProfileRequested(msg.sender, wallet);
         _requestStats(wallet);
@@ -79,10 +79,10 @@ contract Persona is ERC721 {
 
     /// @notice Re-run the pipeline for an existing NFT to refresh its dossier.
     function reread(uint256 tokenId) external {
-        address owner = _requireOwned(tokenId);
-        require(msg.sender == owner, "not owner");
-        emit ProfileRequested(msg.sender, owner);
-        _requestStats(owner);
+        address holder = _requireOwned(tokenId);
+        require(msg.sender == holder, "not owner");
+        emit ProfileRequested(msg.sender, holder);
+        _requestStats(holder);
     }
 
     /// @notice One-call profile read for other contracts/agents to compose on.
@@ -91,7 +91,7 @@ contract Persona is ERC721 {
         view
         returns (uint256 tokenId, string memory dossierText, uint256 gen)
     {
-        tokenId = personaOf[wallet];
+        tokenId = soulprintOf[wallet];
         if (tokenId != 0) {
             dossierText = dossier[tokenId];
             gen = generation[tokenId];
@@ -105,7 +105,7 @@ contract Persona is ERC721 {
         view
         returns (uint256 tokenId, string memory archetype, uint256 activity, uint256 gen)
     {
-        tokenId = personaOf[wallet];
+        tokenId = soulprintOf[wallet];
         if (tokenId != 0) {
             archetype = archetypeOf(tokenId);
             activity = activityScore(tokenId);
@@ -154,7 +154,7 @@ contract Persona is ERC721 {
 
     function _requestDossier(address wallet, uint256 txCount) internal {
         string memory sys =
-            "You are PERSONA, a witty on-chain analyst. Be clever and a little roasty, "
+            "You are Soulprint, a witty on-chain analyst. Be clever and a little roasty, "
             "but never hateful: no slurs, never target real-world identity, religion, or "
             "ethnicity. Roast on-chain behavior only. Output EXACTLY the template. One line per field.";
         string memory prompt = string.concat(
@@ -203,13 +203,13 @@ contract Persona is ERC721 {
         }
         string memory text = abi.decode(responses[0].result, (string));
 
-        uint256 tokenId = personaOf[ctx.wallet];
+        uint256 tokenId = soulprintOf[ctx.wallet];
         if (tokenId == 0) {
-            tokenId = ++totalPersonas;
-            personaOf[ctx.wallet] = tokenId;
+            tokenId = ++totalSoulprints;
+            soulprintOf[ctx.wallet] = tokenId;
             registeredWallets.push(ctx.wallet);
-            _mint(ctx.wallet, tokenId); // _mint (not _safeMint): personas may target contract addresses too; token is soulbound
-            emit PersonaMinted(ctx.wallet, tokenId);
+            _mint(ctx.wallet, tokenId); // _mint (not _safeMint): soulprints may target contract addresses too; token is soulbound
+            emit SoulprintMinted(ctx.wallet, tokenId);
             emit Locked(tokenId);
 
             uint256 paid = paidByWallet[ctx.wallet];
@@ -286,8 +286,8 @@ contract Persona is ERC721 {
         _requireOwned(tokenId);
         string memory gen = Strings.toString(generation[tokenId]);
         string memory json = string.concat(
-            '{"name":"Persona #', Strings.toString(tokenId),
-            '","description":"On-chain personality dossier, generation ', gen,
+            '{"name":"Soulprint #', Strings.toString(tokenId),
+            '","description":"On-chain identity dossier, generation ', gen,
             '","attributes":[',
                 '{"trait_type":"Archetype","value":', _jsonString(archetypeOf(tokenId)), '},',
                 '{"trait_type":"Activity","value":', Strings.toString(activityScore(tokenId)), '},',

@@ -10,7 +10,7 @@ import {
   isAddress,
 } from "viem";
 import { somniaTestnet } from "@/lib/chain";
-import { PERSONA_ADDRESS, PERSONA_ABI, parseDossier, Dossier } from "@/lib/persona";
+import { SOULPRINT_ADDRESS, SOULPRINT_ABI, parseDossier, Dossier } from "@/lib/soulprint";
 import { DossierCard } from "@/components/DossierCard";
 
 const pub = createPublicClient({ chain: somniaTestnet, transport: http() });
@@ -25,22 +25,22 @@ export default function Home() {
   async function pollDossier(wallet: `0x${string}`) {
     for (let i = 0; i < 40; i++) {
       const tokenId = (await pub.readContract({
-        address: PERSONA_ADDRESS,
-        abi: PERSONA_ABI,
-        functionName: "personaOf",
+        address: SOULPRINT_ADDRESS,
+        abi: SOULPRINT_ABI,
+        functionName: "soulprintOf",
         args: [wallet],
       })) as bigint;
 
       if (tokenId > 0n) {
         const raw = (await pub.readContract({
-          address: PERSONA_ADDRESS,
-          abi: PERSONA_ABI,
+          address: SOULPRINT_ADDRESS,
+          abi: SOULPRINT_ABI,
           functionName: "dossier",
           args: [tokenId],
         })) as string;
         const g = (await pub.readContract({
-          address: PERSONA_ADDRESS,
-          abi: PERSONA_ABI,
+          address: SOULPRINT_ADDRESS,
+          abi: SOULPRINT_ABI,
           functionName: "generation",
           args: [tokenId],
         })) as bigint;
@@ -79,8 +79,8 @@ export default function Home() {
       const [from] = await walletClient.requestAddresses();
       const hash = await walletClient.writeContract({
         account: from,
-        address: PERSONA_ADDRESS,
-        abi: PERSONA_ABI,
+        address: SOULPRINT_ADDRESS,
+        abi: SOULPRINT_ABI,
         functionName: "read",
         args: [wallet],
         value: parseEther("1"),
@@ -98,7 +98,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center gap-6 p-10">
-      <h1 className="text-4xl font-bold tracking-tight">PERSONA</h1>
+      <h1 className="text-4xl font-bold tracking-tight">Soulprint</h1>
       <p className="text-center text-zinc-400">
         Paste a wallet. The on-chain AI reads its history and writes your dossier — then mints it as a soulbound NFT.
       </p>

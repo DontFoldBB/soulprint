@@ -1,8 +1,8 @@
-// Set this to the deployed Persona contract address after running scripts/deploy.ts
-export const PERSONA_ADDRESS = "0x0b8912155847fc7c1570e0dd5cd37fe0837966a1" as `0x${string}`;
+// Set this to the deployed Soulprint contract address after running scripts/deploy.ts
+export const SOULPRINT_ADDRESS = "0x0b8912155847fc7c1570e0dd5cd37fe0837966a1" as `0x${string}`;
 
 // Minimal ABI used by the frontend.
-export const PERSONA_ABI = [
+export const SOULPRINT_ABI = [
   {
     type: "function",
     name: "read",
@@ -12,7 +12,7 @@ export const PERSONA_ABI = [
   },
   {
     type: "function",
-    name: "personaOf",
+    name: "soulprintOf",
     stateMutability: "view",
     inputs: [{ name: "wallet", type: "address" }],
     outputs: [{ type: "uint256" }],
