@@ -355,4 +355,36 @@ describe("Soulprint", () => {
     await soulprint.write.evolveBatch([1n]); // evolves wallet[0], cursor -> 1
     expect(await soulprint.read.evolveCursor()).to.equal(1n);
   });
+
+  it("rejects a second read while the first is still pending (no double pipeline)", async () => {
+    const { soulprint, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    // a second read before the first pipeline's callbacks land must revert
+    await expect(
+      soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account })
+    ).to.be.rejected;
+  });
+
+  it("clears the pending guard after a failed read so the wallet can retry", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(0n), Failed]); // stats fails → pending cleared
+    // retry now succeeds (it would revert "read in progress" if the guard weren't cleared)
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    const p = await platform.read.pending([2n]);
+    expect(p[4]).to.equal(true);
+  });
+
+  it("a rejecting recipient can't block the mint (refund fails gracefully)", async () => {
+    const { soulprint, platform } = await deploy();
+    const minter = await hre.viem.deployContract("RejectingMinter");
+    // the contract profiles itself (self-mint → escrowed refund), but rejects ETH
+    await minter.write.mintSelf([soulprint.address], { value: parseEther("1") });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]); // must NOT revert
+    expect(await soulprint.read.soulprintOf([minter.address])).to.equal(1n);
+    expect(await soulprint.read.generation([1n])).to.equal(1n);
+    // refund failed, so no free slot was consumed
+    expect(await soulprint.read.freeMintsRemaining()).to.equal(100n);
+  });
 });

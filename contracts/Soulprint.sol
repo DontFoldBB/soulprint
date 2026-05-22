@@ -41,6 +41,7 @@ contract Soulprint is ERC721 {
     mapping(uint256 => uint256) public generation;    // tokenId -> version
     mapping(uint256 => uint256) public lastUpdated;   // tokenId -> timestamp
     mapping(address => uint256) public paidByWallet;  // escrowed mint amount
+    mapping(address => bool)    public pendingRead;   // wallet -> a pipeline is in flight
     address[] public registeredWallets;
     uint256 public totalSoulprints;
     uint256 public freeMintsRemaining = 100;
@@ -52,6 +53,7 @@ contract Soulprint is ERC721 {
     event Locked(uint256 tokenId);
     event ProfileRequested(address indexed requester, address indexed wallet);
     event EvolutionSkipped(uint256 indexed tokenId);
+    event RefundFailed(address indexed wallet, uint256 amount);
 
     constructor(address platform_) ERC721("Soulprint", "SOUL") {
         platform = IAgentRequester(platform_);
@@ -67,6 +69,14 @@ contract Soulprint is ERC721 {
         require(ok, "withdraw failed");
     }
 
+    /// @notice Owner escape hatch: clear a stuck `pendingRead` flag if an agent request
+    /// never returns, so the wallet isn't locked out of future reads. The platform
+    /// normally delivers every status (Success/Failed/TimedOut), so this is rarely needed.
+    function clearPending(address wallet) external {
+        require(msg.sender == owner, "not owner");
+        pendingRead[wallet] = false;
+    }
+
     // ──────────────────────────────────────────────
     // Entry points
     // ──────────────────────────────────────────────
@@ -74,6 +84,7 @@ contract Soulprint is ERC721 {
     /// @notice First read of a wallet: kicks off the agent pipeline, mints on completion.
     function read(address wallet) external payable {
         require(soulprintOf[wallet] == 0, "already read");
+        require(!pendingRead[wallet], "read in progress");
         bool isSelf = wallet == msg.sender;
         require(msg.value >= (isSelf ? MINT_PRICE : PROFILE_OTHER_PRICE), "underpaid");
         // Only self-mints are refund-eligible (first 100). Profiling someone else is paid
@@ -87,6 +98,7 @@ contract Soulprint is ERC721 {
     function reread(uint256 tokenId) external {
         address holder = _requireOwned(tokenId);
         require(msg.sender == holder, "not owner");
+        require(!pendingRead[holder], "read in progress");
         emit ProfileRequested(msg.sender, holder);
         _requestStats(holder);
     }
@@ -124,6 +136,7 @@ contract Soulprint is ERC721 {
     // ──────────────────────────────────────────────
 
     function _requestStats(address wallet) internal {
+        pendingRead[wallet] = true;
         string memory url = string.concat(
             "https://shannon-explorer.somnia.network/api/v2/addresses/",
             Strings.toHexString(uint160(wallet), 20),
@@ -151,6 +164,7 @@ contract Soulprint is ERC721 {
         delete requests[requestId];
 
         if (status != ResponseStatus.Success || responses.length == 0) {
+            pendingRead[ctx.wallet] = false;
             emit ReadFailed(ctx.wallet, "stats");
             return;
         }
@@ -161,6 +175,7 @@ contract Soulprint is ERC721 {
         // is deterministic, so an unchanged tx count would just reproduce the same dossier.
         uint256 existingId = soulprintOf[ctx.wallet];
         if (existingId != 0 && txCount == txCountOf[existingId]) {
+            pendingRead[ctx.wallet] = false;
             emit EvolutionSkipped(existingId);
             return;
         }
@@ -214,6 +229,7 @@ contract Soulprint is ERC721 {
         delete requests[requestId];
 
         if (status != ResponseStatus.Success || responses.length == 0) {
+            pendingRead[ctx.wallet] = false;
             emit ReadFailed(ctx.wallet, "dossier");
             return;
         }
@@ -230,16 +246,20 @@ contract Soulprint is ERC721 {
 
             uint256 paid = paidByWallet[ctx.wallet];
             delete paidByWallet[ctx.wallet];
-            if (freeMintsRemaining > 0 && paid > 0) {
-                freeMintsRemaining -= 1;
+            if (paid > 0 && freeMintsRemaining > 0) {
+                // Refund the free mint, but never let a rejecting recipient (a contract
+                // minter with no payable receive) or a momentarily thin reserve revert the
+                // whole mint. Consume a free slot only if the refund actually lands.
                 (bool ok, ) = payable(ctx.wallet).call{value: paid}("");
-                require(ok, "refund failed");
+                if (ok) freeMintsRemaining -= 1;
+                else emit RefundFailed(ctx.wallet, paid);
             }
         }
         dossier[tokenId] = text;
         txCountOf[tokenId] = ctx.txCount;
         generation[tokenId] += 1;
         lastUpdated[tokenId] = block.timestamp;
+        pendingRead[ctx.wallet] = false;
         emit DossierUpdated(tokenId, generation[tokenId]);
     }
 
@@ -313,7 +333,7 @@ contract Soulprint is ERC721 {
         uint256 cursor = evolveCursor;
         for (uint256 i = 0; i < count; i++) {
             address wallet = registeredWallets[cursor];
-            if (address(this).balance >= needed) {
+            if (!pendingRead[wallet] && address(this).balance >= needed) {
                 _requestStats(wallet); // handleDossier updates in place (soulprintOf != 0)
             } else {
                 emit EvolutionSkipped(soulprintOf[wallet]);
