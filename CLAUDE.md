@@ -15,28 +15,28 @@ are in ENGLISH.**
 
 ---
 
-## ⟶ Resuming a session? Read `docs/handoff.md` FIRST (live snapshot, updated 2026-05-21)
+## ⟶ Resuming a session? Read `docs/handoff.md` FIRST (live snapshot, updated 2026-05-22)
 
-GitHub: **https://github.com/DontFoldBB/soulprint** (public). Key deltas since day-1 below:
-contract renamed Persona→**Soulprint** + structured dossier, tiered pricing (1 STT self / 2 STT
-others), `withdraw`, `evolveBatch`, `SoulprintCron` (Cron autonomy), `ExampleGate`; 28 tests; solc
-0.8.30; reactivity contracts **vendored** in `contracts/somnia-reactivity/` (don't npm-install that
-pkg). MCP server in `mcp/`. Frontend redesigned (monochrome Somnia, holographic flip `SoulCard`,
-Connect Wallet). **The live deployed contract (address below) is STALE — needs redeploy.** Pushes:
-normal `git push` works; force-push must be run by the user. **Never add `Co-Authored-By: Claude`.**
-Biggest remaining risk: **live Cron autonomy proof (criterion #4) not yet done.**
+GitHub: **https://github.com/DontFoldBB/soulprint** (public). Key facts: the contract is
+**Soulprint** + structured dossier, tiered pricing (1 STT self / 2 STT others), `withdraw`,
+`evolveBatch`, `SoulprintCron` (Cron autonomy), `ExampleGate`; **36 Hardhat tests**; solc 0.8.30;
+reactivity contracts **vendored** in `contracts/somnia-reactivity/` (don't npm-install that pkg).
+MCP server in `mcp/` (reads `profileOf` + `traitsOf`). Frontend redesigned (monochrome Somnia,
+holographic flip `SoulCard`, Connect Wallet). **Redeployed + live on Somnia (addresses below); Cron
+autonomy (criterion #4) is proven live.** Pushes: normal `git push` works; force-push must be run by
+the user. **Never add `Co-Authored-By: Claude`.** The "day 1" section below is historical — trust
+`docs/handoff.md` and the address bullets for current state.
 
-## Current status (day 1, 2026-05-20)
+## Status (historical — day 1, 2026-05-20; see docs/handoff.md for current)
 
 - ✅ Core contract **deployed & working live on Somnia testnet**: read → JSON API agent →
   LLM agent (Qwen3-30B) → soulbound mint, ~6s end to end. Verified by smoke test (funny,
   on-tone dossier with correct archetype).
-- ✅ **13 Hardhat tests passing** (mock agent platform drives the async callbacks).
+- ✅ **Hardhat tests passing** (mock agent platform drives the async callbacks). Now **36**.
 - ✅ Agent-callable entry done (`profileOf` view + `ProfileRequested` event).
 - ✅ Next.js frontend wired to the deployed address + builds. (Minimal placeholder UI —
   to be replaced by a designed version, see Conventions.)
-- ✅ All committed **locally** — **no GitHub remote yet** (must push to a public repo before
-  submission).
+- ✅ Pushed to the public GitHub repo (link above).
 - **Current deployed Soulprint:** `0x92c5f242fd75fb85d036db8598a515bc9eb463ab`
   (redeployed 2026-05-22 — adds audit hardening: `pendingRead` guard vs duplicate pipelines,
   non-reverting refund, owner `clearPending`; seeded 12 STT. Keeps cost-gated evolution + structured

@@ -105,7 +105,13 @@ Positioning: **a composable reputation primitive** other contracts/agents read �
   `npm install` that package — it peer-conflicts with hardhat-toolbox; we vendored it instead.
 - Toolchain note: typescript pinned to **5.7.x** (toolbox peer); solc **0.8.30**.
 
-## Deployed (LIVE) state — STALE, needs redeploy
+---
+
+> **⚠ HISTORICAL — everything below is the original day-1 snapshot.** It predates the 2026-05-22
+> redeploy + audit fixes and is OUTDATED (old addresses, "needs redeploy", "1 STT flat", old test
+> counts, "cron not proven"). For current state use the dated blocks at the TOP of this file.
+
+## (historical) Deployed state — superseded by the 2026-05-22 redeploy
 - Live contract: `0x0b8912155847fc7c1570e0dd5cd37fe0837966a1` on Somnia Shannon testnet
   (chainId 50312). **This is the OLD pre-rename / pre-structured-dossier / pre-Cron / pre-pricing
   build** (it has `personaOf`, `profileOf`, `dossier`, `generation`, old prompt). Local code is ahead.
