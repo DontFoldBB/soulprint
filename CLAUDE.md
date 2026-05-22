@@ -37,16 +37,25 @@ Biggest remaining risk: **live Cron autonomy proof (criterion #4) not yet done.*
   to be replaced by a designed version, see Conventions.)
 - ✅ All committed **locally** — **no GitHub remote yet** (must push to a public repo before
   submission).
-- **Current deployed Soulprint:** `0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232`
-  (redeployed 2026-05-21 — structured dossier + **cost-gated evolution**: `handleStats` skips the
-  LLM + `generation` bump when `tx_count` is unchanged, so a soulprint only re-evolves on real
-  on-chain activity. Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`,
-  `scripts/{smokeTest,deployCron,watchCron,evolveOnce}.ts`). Earlier 0x30e5… / 0x0b89… retired.
-- **Live SoulprintCron:** `0x9eefd1e11cf7e813d1bb62ed52a105a1cb46da1d` — **autonomy criterion #4
-  PROVEN live** (verified at 30s interval: ticks self-reschedule, `generation` rose with no human
-  tx). Now set to a **30-min** interval, batch 5, holds ~40 STT. Owner can retune via `setParams`.
+- **Current deployed Soulprint:** `0x92c5f242fd75fb85d036db8598a515bc9eb463ab`
+  (redeployed 2026-05-22 — adds audit hardening: `pendingRead` guard vs duplicate pipelines,
+  non-reverting refund, owner `clearPending`; seeded 12 STT. Keeps cost-gated evolution + structured
+  dossier. Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`, and the `scripts/`).
+  Earlier 0x5cc8… (+ cron 0x9eef…) / 0x30e5… / 0x0b89… retired; STT recycled via `retireOld.ts`.
+- **Live SoulprintCron:** `0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6` — **autonomy criterion #4**
+  (a fresh cron per redeploy: its `soulprint` is immutable). 30-min interval, batch 5, 40 STT,
+  `subscriptionId` armed; `ticks` accrues from 0 on this deploy. The mechanism (self-reschedule, no
+  human tx) was proven live on the prior cron `0x9eef…` (ticks 0→21+, gen rose with no tx). Owner
+  can retune via `setParams`.
   Lessons: cron must hold **>32 STT** (the in-handler reschedule re-checks the 32-STT minimum after
   paying tick gas) and `maxFeePerGas` must be **> base fee** (0 → callback never mined).
+- **Dead/old cron:** `0xb7cc93f4…03cc` (0 STT, `subscriptionId` 0, points at retired Soulprint
+  `0x30E5…`) is NOT the live one. Cron ops scripts (`watchCron`/`restartCron`/`inspectSub`) target
+  the live `0x9eef…`; `recoverCron` keeps `0xb7cc…` as the historical recovery tool.
+- **Reserve upkeep (gotcha):** the Soulprint contract's STT reserve funds the agent calls behind
+  every read/evolution. When it runs low, `evolveBatch` emits `EvolutionSkipped` instead of evolving
+  (the cron keeps ticking but does nothing). Top up with `scripts/fundSoulprint.ts` (`FUND_STT=N`) —
+  verified 2026-05-22 the reserve had drained to 0.3 STT and was refilled to ~10 STT.
 - **Burner wallet (testnet only):** `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`. Topped up to
   ~84 STT on 2026-05-21. Private key is in `.env` (gitignored). NEVER use a real-money wallet here.
 

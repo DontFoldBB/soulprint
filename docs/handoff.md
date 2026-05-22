@@ -4,6 +4,52 @@
 > and what's left. Pairs with `CLAUDE.md` (project context), `docs/reference/somnia-agents-guide.md`
 > (Agents+Reactivity reference), `docs/plans/2026-05-20-road-to-top.md`, `docs/economics.md`.
 
+## ⟶ UPDATE 2026-05-22 — LIVE STATE VERIFIED ON-CHAIN + P0/P2 FIXES + REDEPLOY
+
+**REDEPLOYED 2026-05-22 (latest):** new **Soulprint `0x92c5f242…463ab`** (12 STT reserve, includes
+the contract hardening below; smoke-tested live — minted "The Ghost / Testnet Explorer" in ~6s) +
+new **Cron `0x9f4f4476…cc3e6`** (40 STT, `subscriptionId` 1192136 armed, `ticks` from 0). The old
+`0x5cc8…` / `0x9eef…` were drained via `retireOld.ts` (≈50 STT recycled) and abandoned — their event
+history (incl. the 21-tick autonomy proof) stays on-chain. All web/mcp/scripts/docs repointed.
+**Earlier mentions of `0x5cc8…` / `0x9eef…` below are the now-retired predecessors.**
+
+Verified the live contracts directly on Somnia (not just from docs) and fixed two silent bugs.
+
+- **Soulprint `0x5cc8…f232` reserve was DRAINED (0.317 STT)** — below the ~0.36 STT a single
+  evolution needs, so the cron was ticking but only emitting `EvolutionSkipped` (no real evolution;
+  `generation` stuck at 2 for ~10h). **Topped up to 10.32 STT** via the new `scripts/fundSoulprint.ts`
+  (tx `0x4c081a7e…544a`, 10 STT from the burner). Re-run that script (`FUND_STT=N`) when it gets low;
+  `withdraw()` recovers unused STT.
+- **LIVE cron is `0x9eefd1e1…da1d`** (confirmed: `ticks`=21, `subscriptionId`=1181487 i.e. armed,
+  39.9 STT, 30-min interval, batch 5, target = current Soulprint). The cron mechanism (self-reschedule,
+  no human tx) is genuinely live → **criterion #4 holds**.
+- **`0xb7cc93f4…03cc` is a DEAD old cron** (0 STT, `subscriptionId`=0, points at retired Soulprint
+  `0x30E5…`). The ops scripts wrongly targeted it → **repointed `watchCron.ts`/`restartCron.ts`/
+  `inspectSub.ts` to the live `0x9eef…`** (`recoverCron.ts` keeps `0xb7cc…` with a "retired" note).
+  `inspectSub.ts` now reads the *current* subscriptionId from the cron (it changes every tick).
+- **Frontend mint bug fixed:** `web/app/page.tsx` sent 1 STT flat, but the contract needs **2 STT to
+  profile someone else** → "profile any wallet" reverted. Now sends 1 (self) / 2 (other) by signer,
+  with matching button label + helper text. `npm run build` green.
+- **README fully refreshed** to the real state (both live addresses + explorer links, criterion #4 ✅,
+  28 tests, SoulprintCron/MCP/ExampleGate/cost-gated evolution). Stale root `AGENTS.md` (a Codex-era
+  dup of CLAUDE.md) → replaced with a pointer to `CLAUDE.md`.
+- **Demo tip:** cost-gating only re-evolves a wallet whose `tx_count` changed. The burner's count just
+  changed (it sent the top-up tx), so the next autonomous cron tick should bump token #1 `generation`
+  2→3 with NO human tx — a clean shot to capture for the video.
+- **Contract hardening (audit response — in code + tests, NOT yet redeployed):** added a
+  `pendingRead` guard (a 2nd `read`/`reread` for the same wallet while a pipeline is in flight now
+  reverts — kills duplicate pipelines / fake `generation` bumps); made the free-mint refund
+  **non-reverting** (a rejecting recipient or a thin reserve can no longer revert the whole mint —
+  emits `RefundFailed`, and a free slot is consumed only on a successful refund); added an owner
+  `clearPending` escape hatch. **31 tests green** (was 28). The LIVE `0x5cc8…` still runs the
+  pre-fix bytecode → a redeploy is needed to put these on-chain (see next).
+- **Redeploy is STT-gated:** `SoulprintCron.soulprint` is **immutable**, so a new Soulprint forces a
+  NEW funded cron (≥32 STT) + re-proving autonomy from `ticks`=0. Burner is ~27 STT → below the 32
+  floor; needs a faucet top-up first. The two fixed bugs need adversarial conditions (deliberate
+  double-submit; near-empty reserve + a contract recipient), so the low-volume live demo is
+  unaffected — deferring the redeploy is safe.
+- **Still open:** demo video + final Encode submission writeup (deferred by the user).
+
 ## ⟶ UPDATE 2026-05-21 (later session) — REDEPLOYED + CRON LIVE
 
 - **Soulprint (CURRENT):** `0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232` — adds **cost-gated
