@@ -2,6 +2,8 @@ import hre from "hardhat";
 import { formatEther } from "viem";
 
 // The first (broken) cron — stop its subscription and pull the 32 STT back.
+// NOTE: already fully retired (0 STT, subscriptionId 0, points at an old Soulprint).
+// Kept only as the historical recovery tool for 0xb7cc…; to retire the CURRENT live deploy, use retireOld.ts.
 const OLD_CRON = "0xb7cc93f4b5ae156abf1f73ea1d6593a0564d03cc";
 
 async function main() {

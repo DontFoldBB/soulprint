@@ -2,7 +2,7 @@ import hre from "hardhat";
 import { parseEther, formatEther } from "viem";
 
 // The freshly deployed Soulprint this cron will evolve.
-const SOULPRINT = "0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232";
+const SOULPRINT = "0x92c5f242fd75fb85d036db8598a515bc9eb463ab";
 const INTERVAL = 1800n; // 30 minutes between autonomous ticks
 const BATCH = 5n; // wallets re-evolved per tick (round-robin)
 const FUND = parseEther("40"); // > 32 STT floor so the in-handler reschedule survives tick gas

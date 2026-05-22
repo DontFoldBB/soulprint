@@ -1,5 +1,5 @@
 // Set this to the deployed Soulprint contract address after running scripts/deploy.ts
-export const SOULPRINT_ADDRESS = "0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232" as `0x${string}`;
+export const SOULPRINT_ADDRESS = "0x92c5f242fd75fb85d036db8598a515bc9eb463ab" as `0x${string}`;
 
 // Minimal ABI used by the frontend.
 export const SOULPRINT_ABI = [

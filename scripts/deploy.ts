@@ -2,7 +2,7 @@ import hre from "hardhat";
 import { parseEther, formatEther } from "viem";
 
 const PLATFORM = "0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776";
-const SEED = parseEther("3"); // reserve to fund agent deposits + first-100 refunds
+const SEED = parseEther("12"); // reserve to fund agent deposits + first-100 refunds (~40 evolutions)
 
 async function main() {
   const [wallet] = await hre.viem.getWalletClients();

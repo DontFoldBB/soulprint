@@ -10,7 +10,7 @@ export const SOMNIA_TESTNET = {
 
 /** Deployed Soulprint contract. Override via SOULPRINT_ADDRESS. */
 export const SOULPRINT_ADDRESS = (process.env.SOULPRINT_ADDRESS ??
-  "0x5cc8b871013a252d9fdbc807b6f0a5d0d951f232") as Address;
+  "0x92c5f242fd75fb85d036db8598a515bc9eb463ab") as Address;
 
 const RPC_URL = process.env.SOULPRINT_RPC ?? SOMNIA_TESTNET.rpcUrls.default.http[0];
 
