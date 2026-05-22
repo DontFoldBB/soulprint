@@ -387,4 +387,62 @@ describe("Soulprint", () => {
     // refund failed, so no free slot was consumed
     expect(await soulprint.read.freeMintsRemaining()).to.equal(100n);
   });
+
+  it("audit: rejects the zero address before spending agent deposits", async () => {
+    const { soulprint, user } = await deploy();
+
+    await expect(
+      soulprint.write.read(["0x0000000000000000000000000000000000000000"], {
+        value: parseEther("2"),
+        account: user.account,
+      })
+    ).to.be.rejected;
+  });
+
+  it("audit: tokenURI stays valid JSON when the dossier contains JSON control characters", async () => {
+    const { soulprint, platform, user } = await deploy();
+    const dossier =
+      "TYPE: Control Char Wallet, Type II\n" +
+      "ARCHETYPE: Testnet Explorer\n" +
+      "STRENGTH: Keeps moving\n" +
+      "WEAKNESS: Carries tabs\tand carriage returns\rin notes\n" +
+      "STYLE: \"parse me\"\n" +
+      "KARMA: +1\n" +
+      "NOTES: raw tab\t raw carriage\r return\n" +
+      "RARITY: 2";
+
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(dossier), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+
+    const uri = await soulprint.read.tokenURI([tokenId]);
+    const jsonText = Buffer.from(uri.split(",")[1], "base64").toString("utf8");
+    expect(() => JSON.parse(jsonText)).not.to.throw();
+  });
+
+  it("SoulprintCron rejects bad constructor params (interval/batch)", async () => {
+    const { soulprint } = await deploy();
+    await expect(hre.viem.deployContract("SoulprintCron", [soulprint.address, 1n, 5n])).to.be.rejected; // interval < 2
+    await expect(hre.viem.deployContract("SoulprintCron", [soulprint.address, 60n, 0n])).to.be.rejected; // zero batch
+  });
+
+  it("SoulprintCron setParams validates inputs and is owner-only", async () => {
+    const { soulprint, user } = await deploy();
+    const cron = await hre.viem.deployContract("SoulprintCron", [soulprint.address, 60n, 5n]);
+    await expect(cron.write.setParams([1n, 5n])).to.be.rejected;   // interval too short
+    await expect(cron.write.setParams([60n, 0n])).to.be.rejected;  // zero batch
+    await expect(cron.write.setParams([120n, 3n], { account: user.account })).to.be.rejected; // not owner
+    await cron.write.setParams([120n, 3n]); // owner, valid
+    expect(await cron.read.intervalSeconds()).to.equal(120n);
+    expect(await cron.read.batchSize()).to.equal(3n);
+  });
+
+  it("SoulprintCron forceReset is owner-only (escape hatch to re-arm after a stall)", async () => {
+    const { soulprint, user } = await deploy();
+    const cron = await hre.viem.deployContract("SoulprintCron", [soulprint.address, 60n, 5n]);
+    await expect(cron.write.forceReset({ account: user.account })).to.be.rejected; // not owner
+    await cron.write.forceReset(); // owner ok
+    expect(await cron.read.subscriptionId()).to.equal(0n);
+  });
 });

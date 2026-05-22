@@ -83,6 +83,7 @@ contract Soulprint is ERC721 {
 
     /// @notice First read of a wallet: kicks off the agent pipeline, mints on completion.
     function read(address wallet) external payable {
+        require(wallet != address(0), "zero wallet");
         require(soulprintOf[wallet] == 0, "already read");
         require(!pendingRead[wallet], "read in progress");
         bool isSelf = wallet == msg.sender;
@@ -365,12 +366,22 @@ contract Soulprint is ERC721 {
     function _jsonString(string memory s) internal pure returns (string memory) {
         bytes memory b = bytes(s);
         bytes memory out = abi.encodePacked('"');
+        bytes16 hexChars = "0123456789abcdef";
         for (uint256 i = 0; i < b.length; i++) {
+            uint8 v = uint8(b[i]);
             bytes1 c = b[i];
             if (c == '"') out = abi.encodePacked(out, '\\"');
             else if (c == "\\") out = abi.encodePacked(out, "\\\\");
             else if (c == "\n") out = abi.encodePacked(out, "\\n");
-            else out = abi.encodePacked(out, c);
+            else if (c == "\r") out = abi.encodePacked(out, "\\r");
+            else if (c == "\t") out = abi.encodePacked(out, "\\t");
+            else if (v < 0x20) {
+                // Any other JSON control char (U+0000–U+001F) must be \u-escaped or the
+                // metadata is invalid JSON. (RFC 8259 §7.)
+                out = abi.encodePacked(out, "\\u00", hexChars[v >> 4], hexChars[v & 0x0f]);
+            } else {
+                out = abi.encodePacked(out, c);
+            }
         }
         return string(abi.encodePacked(out, '"'));
     }

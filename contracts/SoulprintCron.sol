@@ -37,6 +37,8 @@ contract SoulprintCron is SomniaEventHandler {
 
     constructor(address soulprint_, uint64 intervalSeconds_, uint256 batchSize_) payable {
         require(soulprint_ != address(0), "zero soulprint");
+        require(intervalSeconds_ >= 2, "interval too short");
+        require(batchSize_ > 0, "zero batch");
         soulprint = ISoulprint(soulprint_);
         owner = msg.sender;
         intervalSeconds = intervalSeconds_;
@@ -46,6 +48,7 @@ contract SoulprintCron is SomniaEventHandler {
     /// @notice Owner starts the recurring schedule (one-shot subscription that
     /// self-reschedules inside `_onEvent`). Requires >= 32 STT on this contract.
     function start() external onlyOwner {
+        require(subscriptionId == 0, "already started"); // stop()/forceReset() first to re-arm
         _scheduleNext();
         emit Started(subscriptionId);
     }
@@ -59,8 +62,18 @@ contract SoulprintCron is SomniaEventHandler {
         }
     }
 
+    /// @notice Owner escape hatch: forget the current subscription handle WITHOUT calling the
+    /// precompile. Use to re-arm after a stalled tick (whose in-handler `_scheduleNext` reverted,
+    /// e.g. on low balance) left a dead non-zero `subscriptionId` behind — then call `start()`.
+    /// Unlike `stop()`, this can't revert on an already-dead subscription.
+    function forceReset() external onlyOwner {
+        subscriptionId = 0;
+    }
+
     /// @notice Owner tunes the cadence / batch size for subsequent ticks.
     function setParams(uint64 intervalSeconds_, uint256 batchSize_) external onlyOwner {
+        require(intervalSeconds_ >= 2, "interval too short");
+        require(batchSize_ > 0, "zero batch");
         intervalSeconds = intervalSeconds_;
         batchSize = batchSize_;
     }
