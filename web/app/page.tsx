@@ -78,6 +78,10 @@ export default function Home() {
       const [from] = await wc.requestAddresses();
       setStatus("Switching to Somnia Shannon…");
       await ensureChain(wc);
+      // Tiered pricing (Soulprint.sol): 1 STT to profile your OWN wallet, 2 STT for
+      // someone else's. The signer (`from`) is the source of truth, so we send exactly
+      // what the contract requires and never revert with "underpaid".
+      const isSelf = from.toLowerCase() === wallet.toLowerCase();
       const hash = await wc.writeContract({
         account: from,
         chain: somniaTestnet,
@@ -85,9 +89,7 @@ export default function Home() {
         abi: SOULPRINT_ABI,
         functionName: "read",
         args: [wallet],
-        // Live contract charges 1 STT flat. TODO: restore 1/2 split (self/other) after
-        // redeploying the tiered-pricing contract.
-        value: parseEther("1"),
+        value: parseEther(isSelf ? "1" : "2"),
       });
       setStatus("Transaction sent — confirming on Somnia…");
       await pub.waitForTransactionReceipt({ hash });
@@ -169,7 +171,7 @@ export default function Home() {
     ? "Working…"
     : !typedAddr || isMine
     ? "Read me · 1 STT"
-    : "Read wallet · 1 STT";
+    : "Read wallet · 2 STT";
 
   return (
     <main className="relative mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:py-14">
@@ -218,7 +220,7 @@ export default function Home() {
           </button>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/40">
-          <span>1 STT · soulbound NFT mints to the target wallet. You can profile any wallet.</span>
+          <span>1 STT for your own wallet · 2 STT for anyone else. Soulbound NFT mints to the target wallet.</span>
           <button
             onClick={showSample}
             className="font-semibold text-foreground/70 underline-offset-4 transition hover:text-foreground hover:underline"
