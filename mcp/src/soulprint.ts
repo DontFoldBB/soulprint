@@ -27,6 +27,19 @@ const ABI = [
       { name: "generation", type: "uint256" },
     ],
   },
+  // Structured machine-readable traits (newer deployments). Read defensively.
+  {
+    type: "function",
+    name: "traitsOf",
+    stateMutability: "view",
+    inputs: [{ name: "wallet", type: "address" }],
+    outputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "archetype", type: "string" },
+      { name: "activity", type: "uint256" },
+      { name: "generation", type: "uint256" },
+    ],
+  },
 ] as const;
 
 const client = createPublicClient({
@@ -39,6 +52,9 @@ export type Soulprint = {
   exists: boolean;
   tokenId: number;
   generation: number;
+  /** Canonical archetype + 0–100 activity score from traitsOf (newer deployments). */
+  archetype?: string;
+  activity?: number;
   /** Parsed "KEY: value" fields from the dossier (TYPE, ARCHETYPE, STRENGTH, …). */
   fields: Record<string, string>;
   raw: string;
@@ -67,11 +83,31 @@ export async function getSoulprint(wallet: string): Promise<Soulprint> {
     args: [addr],
   })) as readonly [bigint, string, bigint];
 
+  // Structured traits are best-effort: older deployments lack traitsOf, so never fail on it.
+  let archetype: string | undefined;
+  let activity: number | undefined;
+  if (tokenId > 0n) {
+    try {
+      const [, a, score] = (await client.readContract({
+        address: SOULPRINT_ADDRESS,
+        abi: ABI,
+        functionName: "traitsOf",
+        args: [addr],
+      })) as readonly [bigint, string, bigint, bigint];
+      archetype = a || undefined;
+      activity = Number(score);
+    } catch {
+      // pre-traitsOf deployment — profileOf already gave us the dossier
+    }
+  }
+
   return {
     wallet: addr,
     exists: tokenId > 0n,
     tokenId: Number(tokenId),
     generation: Number(generation),
+    archetype,
+    activity,
     fields: parseDossier(raw),
     raw,
   };

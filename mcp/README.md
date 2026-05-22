@@ -44,5 +44,5 @@ Then ask your assistant: *"Use soulprint to tell me who 0x… is."*
 - `SOULPRINT_ADDRESS` — contract address (defaults to the current testnet deployment).
 - `SOULPRINT_RPC` — Somnia RPC URL (defaults to the public Shannon testnet RPC).
 
-> Note: once the contract is redeployed with the structured-dossier upgrade, point `SOULPRINT_ADDRESS`
-> at the new address; the server will then surface the canonical `ARCHETYPE` + activity fields too.
+> The default `SOULPRINT_ADDRESS` points at the current structured-dossier deployment, so the server
+> surfaces the canonical `ARCHETYPE` and on-chain `ACTIVITY` (0–100) alongside the dossier fields.

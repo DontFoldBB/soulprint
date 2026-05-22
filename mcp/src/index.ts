@@ -24,8 +24,10 @@ server.tool(
       }
       const lines = [
         `Soulprint #${sp.tokenId} for ${sp.wallet} (generation ${sp.generation}):`,
-        ...Object.entries(sp.fields).map(([k, v]) => `- ${k}: ${v}`),
       ];
+      // On-chain activity score (0–100) from traitsOf — not present in the dossier text.
+      if (sp.activity !== undefined) lines.push(`- ACTIVITY: ${sp.activity}/100`);
+      lines.push(...Object.entries(sp.fields).map(([k, v]) => `- ${k}: ${v}`));
       return { content: [{ type: "text", text: lines.join("\n") }] };
     } catch (e) {
       return {
