@@ -130,7 +130,7 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const touchX = useRef<number | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [flipped, setFlipped] = useState(false);
 
   // ── Cursor-following 3D tilt (logic ported verbatim from React Bits ProfileCard) ──
@@ -260,12 +260,35 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
     async (e: ReactMouseEvent) => {
       e.stopPropagation(); // never flip when copying
       if (!wallet) return;
+      const done = (ok: boolean) => {
+        setCopyState(ok ? "copied" : "failed");
+        setTimeout(() => setCopyState("idle"), 1400);
+      };
       try {
-        await navigator.clipboard.writeText(wallet);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1400);
+        // Async Clipboard API — unavailable in insecure contexts / some in-app browsers.
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(wallet);
+          done(true);
+          return;
+        }
+        throw new Error("no clipboard api");
       } catch {
-        /* clipboard may be unavailable (insecure context) — fail silently */
+        // Fallback: hidden textarea + execCommand("copy"). Surfaces a visible "Copy failed"
+        // if even this is blocked, instead of silently leaving the clipboard empty.
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = wallet;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          done(ok);
+        } catch {
+          done(false);
+        }
       }
     },
     [wallet]
@@ -291,20 +314,14 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
     <div className="rise">
       {/* perspective stage → flipper (rotateY toggled) → two faces */}
       <div className="sc-stage" style={wrapperStyle}>
+        {/* Mouse/touch flip enhancement only. The keyboard- and screen-reader-accessible
+            flip control is the <button> caption below the card — so this is NOT a
+            role="button" wrapping the inner Copy <button> (no nested interactive controls). */}
         <div
           className={"sc-flipper" + (flipped ? " is-flipped" : "")}
           onClick={toggleFlip}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
-          role="button"
-          tabIndex={0}
-          aria-label="Flip Soulprint card"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleFlip();
-            }
-          }}
         >
           {/* ── FRONT FACE: holographic tilt card ─────────────── */}
           <div className="sc-face sc-face-front">
@@ -364,7 +381,11 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
                         onClick={onCopy}
                         disabled={!wallet}
                       >
-                        {copied ? "Copied!" : "Copy address"}
+                        {copyState === "copied"
+                          ? "Copied!"
+                          : copyState === "failed"
+                          ? "Copy failed"
+                          : "Copy address"}
                       </button>
                     </div>
                   </div>
@@ -437,7 +458,9 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
           </div>
         </div>
       </div>
-      <p className="sc-flip-caption">tap or swipe to flip ⟲</p>
+      <button type="button" className="sc-flip-caption" onClick={toggleFlip}>
+        {flipped ? "show front ⟲" : "tap or swipe to flip ⟲"}
+      </button>
     </div>
   );
 }

@@ -135,12 +135,15 @@ export function buildActivity(eco: Ecosystem | null): ActivityEvent[] {
       archetype: e.archetype,
       rarity: e.rarity,
     };
-    // An evolution event for anything past gen 1 (timestamp = last update).
+    // One event per soulprint, timestamped by its last on-chain update. For an evolved
+    // soulprint (gen > 1) that update IS the latest evolution; for gen 1 it's the mint. We
+    // have no separate on-chain mint timestamp, so we don't fabricate a second "minted" event
+    // at the evolution time (which would read as a mint that never happened then).
     if (e.generation > 1) {
       events.push({ ...base, id: `e-${e.tokenId}`, kind: "evolve", generation: e.generation, time: e.lastUpdated });
+    } else {
+      events.push({ ...base, id: `m-${e.tokenId}`, kind: "mint", generation: 1, time: e.lastUpdated });
     }
-    // A mint event (no on-chain mint timestamp; use lastUpdated as a proxy).
-    events.push({ ...base, id: `m-${e.tokenId}`, kind: "mint", generation: 1, time: e.lastUpdated });
   }
   return events.sort((a, b) => b.time - a.time).slice(0, 8);
 }

@@ -49,7 +49,7 @@ export default function Dashboard() {
       if (a) {
         setConnected(a);
         setViewWallet(a);
-        loadWalletProfile(a).then((p) => p && setProfile(p));
+        loadWalletProfile(a).then(setProfile);
       }
     });
     loadEcosystem(pub)
@@ -65,8 +65,8 @@ export default function Dashboard() {
       setConnected(addr);
       setViewWallet(addr);
       const p = await loadWalletProfile(addr);
-      if (p) setProfile(p);
-      else setError('No Soulprint yet — head to Mint to create yours.');
+      setProfile(p); // null clears any previously shown card (no stale card on an unprofiled wallet)
+      if (!p) setError('No Soulprint yet — head to Mint to create yours.');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -110,7 +110,7 @@ export default function Dashboard() {
           </h2>
           {sampleEco && (
             <span className="text-[10px] uppercase tracking-[0.2em] text-soul-dim/70">
-              sample · live after redeploy
+              sample data
             </span>
           )}
         </div>

@@ -68,12 +68,23 @@
 
 /* affordance hint — placed BELOW the card so it never overlaps card content */
 .sc-flip-caption {
+  display: block;
+  width: 100%;
   margin-top: 0.9rem;
+  padding: 0.2rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
   text-align: center;
   font-size: 0.6rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.3);
+  transition: color 0.2s ease;
+}
+
+.sc-flip-caption:hover {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .sc-wrapper {

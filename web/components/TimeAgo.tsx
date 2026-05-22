@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { relativeTime } from "@/lib/dashboard";
 
-/** Renders a relative time ("4m ago") only after mount, so SSR and the first
- *  client render match (both empty) — avoids Date.now() hydration mismatches. */
+// Never changes — TimeAgo only needs the server-vs-client distinction, not live updates.
+const subscribe = () => () => {};
+
+/** Renders a relative time ("4m ago") only after hydration, so SSR and the first client
+ *  render match (both "·") — avoids Date.now() hydration mismatches. Uses useSyncExternalStore
+ *  (getServerSnapshot → true) instead of a setState-in-effect mount flag, which the
+ *  react-hooks lint rule forbids. */
 export function TimeAgo({ unix }: { unix: number }) {
-  const [label, setLabel] = useState("");
-  useEffect(() => {
-    setLabel(relativeTime(unix));
-  }, [unix]);
-  return <>{label || "·"}</>;
+  const isServer = useSyncExternalStore(
+    subscribe,
+    () => false, // client snapshot
+    () => true // server snapshot
+  );
+  return <>{isServer ? "·" : relativeTime(unix)}</>;
 }

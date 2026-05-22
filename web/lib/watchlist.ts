@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 // A local (per-browser) list of wallets to follow. No contract/account needed —
 // "you minted for 0xAB, now keep an eye on it".
 const KEY = "soulprint:watch";
+const EVENT = "soulprint:watch-changed";
 
 function read(): `0x${string}`[] {
   if (typeof window === "undefined") return [];
@@ -19,34 +20,55 @@ function read(): `0x${string}`[] {
 function write(list: `0x${string}`[]) {
   try {
     localStorage.setItem(KEY, JSON.stringify(list));
+    window.dispatchEvent(new Event(EVENT)); // notify this tab's subscribers
   } catch {
     /* private mode / quota — ignore */
   }
 }
 
-export function useWatchlist() {
-  const [list, setList] = useState<`0x${string}`[]>([]);
+// useSyncExternalStore is the SSR-safe way to read client-only state (localStorage) without
+// a synchronous setState-in-effect. getServerSnapshot returns []; React re-syncs to the real
+// list after hydration with no mismatch warning. The snapshot is cached on the raw JSON so the
+// reference stays stable across renders (a fresh [] each call would loop the store).
+const EMPTY: `0x${string}`[] = [];
+let cacheRaw = "";
+let cache: `0x${string}`[] = EMPTY;
 
-  // Load after mount (avoids SSR/client mismatch) and react to other tabs.
-  useEffect(() => {
-    setList(read());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === KEY) setList(read());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+function getSnapshot(): `0x${string}`[] {
+  const raw = localStorage.getItem(KEY) ?? "[]";
+  if (raw !== cacheRaw) {
+    cacheRaw = raw;
+    cache = read();
+  }
+  return cache;
+}
+
+function getServerSnapshot(): `0x${string}`[] {
+  return EMPTY;
+}
+
+function subscribe(onChange: () => void) {
+  const handler = (e: Event) => {
+    if (e instanceof StorageEvent && e.key !== KEY) return; // ignore unrelated keys
+    onChange();
+  };
+  window.addEventListener("storage", handler); // other tabs
+  window.addEventListener(EVENT, handler); // this tab (storage doesn't fire for the writer)
+  return () => {
+    window.removeEventListener("storage", handler);
+    window.removeEventListener(EVENT, handler);
+  };
+}
+
+export function useWatchlist() {
+  const list = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const add = useCallback((addr: `0x${string}`) => {
-    const next = Array.from(new Set([addr, ...read()]));
-    write(next);
-    setList(next);
+    write(Array.from(new Set([addr, ...read()])));
   }, []);
 
   const remove = useCallback((addr: `0x${string}`) => {
-    const next = read().filter((a) => a.toLowerCase() !== addr.toLowerCase());
-    write(next);
-    setList(next);
+    write(read().filter((a) => a.toLowerCase() !== addr.toLowerCase()));
   }, []);
 
   const has = useCallback(

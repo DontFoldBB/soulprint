@@ -105,6 +105,7 @@ export default function Home() {
 
   async function connectWallet() {
     setError("");
+    setResult(null); // drop any card from a previous lookup before loading the new wallet
     try {
       const addr = await connect();
       setConnected(addr);
@@ -113,7 +114,8 @@ export default function Home() {
       setBusy(true);
       setStatus("Loading your Soulprint…");
       const existing = await loadWalletProfile(addr);
-      if (existing) setResult(existing);
+      setResult(existing); // null clears the card for an unprofiled wallet (no stale card)
+      if (!existing) setError("No Soulprint yet for this wallet — read it above to mint one.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -135,7 +137,7 @@ export default function Home() {
       if (r) setResult(r);
       else
         setError(
-          "That entry is sample activity — it'll be readable once the new contract is live."
+          "That's sample activity — look up or connect a real wallet to see a live Soulprint."
         );
     } finally {
       setBusy(false);
