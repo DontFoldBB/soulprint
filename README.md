@@ -62,8 +62,8 @@ the answer (gating, scoring, reputation, matchmaking). The included `ExampleGate
 
 | | |
 |---|---|
-| **Soulprint** (core) | [`0x92c5f242fd75fb85d036db8598a515bc9eb463ab`](https://shannon-explorer.somnia.network/address/0x92c5f242fd75fb85d036db8598a515bc9eb463ab) |
-| **SoulprintCron** (autonomy) | [`0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6`](https://shannon-explorer.somnia.network/address/0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6) |
+| **Soulprint** (core) | [`0xbc55dc48cdafb62cc054e1b9424b0429c1750af9`](https://shannon-explorer.somnia.network/address/0xbc55dc48cdafb62cc054e1b9424b0429c1750af9) |
+| **SoulprintCron** (autonomy) | [`0x3cadf41dcc651366b23cce43086dd646043c4a6b`](https://shannon-explorer.somnia.network/address/0x3cadf41dcc651366b23cce43086dd646043c4a6b) |
 | Somnia Agents platform | `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776` |
 | Agents used | JSON API Request (`13174…`) + LLM Inference / Qwen3-30B (`12847…`) |
 

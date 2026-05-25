@@ -1,8 +1,43 @@
-# Soulprint — Handoff snapshot (2026-05-21)
+# Soulprint — Handoff snapshot (2026-05-25)
 
 > Read this first when resuming in a fresh session. It captures current state, what's on GitHub,
 > and what's left. Pairs with `CLAUDE.md` (project context), `docs/reference/somnia-agents-guide.md`
 > (Agents+Reactivity reference), `docs/plans/2026-05-20-road-to-top.md`, `docs/economics.md`.
+
+## ⟶ UPDATE 2026-05-25 — SOUL EVOLUTION SYSTEM REDEPLOYED + LIVE
+
+**This session built + shipped the Soul Evolution System on-chain:**
+- **10 stages × 30 forms** evolution system designed and deployed end-to-end.
+- `contracts/Soulprint.sol` extended: `stageOf(tokenId)`, `formIdOf(tokenId)`, `formSlugOf(tokenId)`,
+  `evolutionOf(wallet)` + helpers (`_stageFromTxCount`, `_archetypeIdx`, `_formIdFor`, `_formSlug`).
+  Stage 1–10 = bucketed `tx_count` thresholds; Form 1–30 = lookup(archetype × stage). Stage+Form added
+  to `tokenURI` attributes. **41 tests green** (was 36; +5 new for stage/form/`evolutionOf`/tokenURI).
+- **30 monochrome spirit PNGs** (51 MB) generated via ChatGPT (per the spec prompts), saved to
+  `web/public/souls/<slug>.png`. Verified via the contact sheet at `web/public/souls-contact.html`.
+- Full spec + ready-to-paste prompts: `docs/specs/2026-05-23-soul-evolution-system.md` (§6.3).
+- Frontend: `web/lib/evolution.ts` (JS mirror of contract stage/form logic — also reads on-chain
+  directly via the new `evolutionOf` getter once that path is wired).
+  `web/lib/profile.ts` extended with `stage/stageName/formId/formSlug/formName`.
+  `web/components/SoulCard.tsx + .css` — image driven by `formSlug`, **headline = plain-English role
+  name** (Cartographer, Yield Farmer, DeFi Whale, Sybil Hydra, Onchain Legend …; see NAMES in
+  evolution.ts), **STYLE quote as the viral hook**, KARMA in meta, **10-dot Stage ladder**.
+  Front kept minimal — Strength/Weakness/Notes stay on the back-face (flip).
+- web lint+build green, 41 tests green.
+
+**REDEPLOYED 2026-05-25 (latest live pair):**
+- **Soulprint:** `0xbc55dc48cdafb62cc054e1b9424b0429c1750af9` (12 STT reserve, evolution system
+  on-chain, audit hardening preserved).
+- **SoulprintCron:** `0x3cadf41dcc651366b23cce43086dd646043c4a6b` (40 STT, 30-min interval, batch 5,
+  `subscriptionId` 2071983 armed at deploy, `ticks` accrues from 0).
+- Old `0x92c5…463ab` Soulprint + `0x9f4f…cc3e6` Cron drained via `scripts/retireOld.ts`
+  (~39.6 STT recovered) and abandoned — their event history stays on-chain. All 12
+  address references repointed (`web/lib`, `mcp/src`, `scripts/*`, `README`, `CLAUDE.md`, this doc).
+
+**Next stretch after redeploy:** extend the LLM prompt in `_requestDossier` so the agent emits
+additional AI fields per wallet — `HEADLINE` / `ROAST` / `PROPHECY` / `VIBE_TAG` — same agent call,
+more AI content per token. Frontend then surfaces them. The biggest "max-AI" lever left.
+
+---
 
 ## ⟶ UPDATE 2026-05-22 — LIVE STATE VERIFIED ON-CHAIN + P0/P2 FIXES + REDEPLOY
 

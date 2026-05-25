@@ -37,21 +37,23 @@ the user. **Never add `Co-Authored-By: Claude`.** The "day 1" section below is h
 - ✅ Next.js frontend wired to the deployed address + builds. (Minimal placeholder UI —
   to be replaced by a designed version, see Conventions.)
 - ✅ Pushed to the public GitHub repo (link above).
-- **Current deployed Soulprint:** `0x92c5f242fd75fb85d036db8598a515bc9eb463ab`
-  (redeployed 2026-05-22 — adds audit hardening: `pendingRead` guard vs duplicate pipelines,
-  non-reverting refund, owner `clearPending`; seeded 12 STT. Keeps cost-gated evolution + structured
-  dossier. Address propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`, and the `scripts/`).
-  Earlier 0x5cc8… (+ cron 0x9eef…) / 0x30e5… / 0x0b89… retired; STT recycled via `retireOld.ts`.
-- **Live SoulprintCron:** `0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6` — **autonomy criterion #4**
+- **Current deployed Soulprint:** `0xbc55dc48cdafb62cc054e1b9424b0429c1750af9`
+  (redeployed 2026-05-25 — adds the **Soul Evolution System**: `stageOf` / `formIdOf` / `formSlugOf` /
+  `evolutionOf` + Stage+Form attributes in `tokenURI`. 10 stages × 3 archetypes = 30 forms; stage
+  derived from `tx_count` buckets, form = lookup(archetype × stage). Keeps audit hardening: `pendingRead`
+  guard, non-reverting refund, owner `clearPending`, cost-gated evolution. Seeded 12 STT. Address
+  propagated to `web/lib/soulprint.ts`, `mcp/src/soulprint.ts`, and the `scripts/`).
+  Earlier 0x92c5… (+ cron 0x9f4f…) / 0x5cc8… / 0x30e5… / 0x0b89… retired; STT recycled via `retireOld.ts`.
+- **Live SoulprintCron:** `0x3cadf41dcc651366b23cce43086dd646043c4a6b` — **autonomy criterion #4**
   (a fresh cron per redeploy: its `soulprint` is immutable). 30-min interval, batch 5, 40 STT,
-  `subscriptionId` armed; `ticks` accrues from 0 on this deploy. The mechanism (self-reschedule, no
-  human tx) was proven live on the prior cron `0x9eef…` (ticks 0→21+, gen rose with no tx). Owner
-  can retune via `setParams`.
+  `subscriptionId` 2071983 armed; `ticks` accrues from 0 on this deploy. The mechanism (self-reschedule,
+  no human tx) was proven live on prior crons `0x9eef…` (ticks 0→21+) and `0x9f4f…`; criterion holds.
+  Owner can retune via `setParams`.
   Lessons: cron must hold **>32 STT** (the in-handler reschedule re-checks the 32-STT minimum after
   paying tick gas) and `maxFeePerGas` must be **> base fee** (0 → callback never mined).
 - **Dead/old cron:** `0xb7cc93f4…03cc` (0 STT, `subscriptionId` 0, points at retired Soulprint
   `0x30E5…`) is NOT the live one. Cron ops scripts (`watchCron`/`restartCron`/`inspectSub`) target
-  the live `0x9eef…`; `recoverCron` keeps `0xb7cc…` as the historical recovery tool.
+  the live `0x3cad…`; `recoverCron` keeps `0xb7cc…` as the historical recovery tool.
 - **Reserve upkeep (gotcha):** the Soulprint contract's STT reserve funds the agent calls behind
   every read/evolution. When it runs low, `evolveBatch` emits `EvolutionSkipped` instead of evolving
   (the cron keeps ticking but does nothing). Top up with `scripts/fundSoulprint.ts` (`FUND_STT=N`) —

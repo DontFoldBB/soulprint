@@ -4,8 +4,8 @@ import { formatEther } from "viem";
 // Retire the current live deployment by pulling all STT back to the owner (burner), so a
 // fresh redeploy can be funded from it. Owner-only withdraws; the old contracts/tokens are
 // simply abandoned (their event history — including the autonomy proof — stays on-chain).
-const OLD_CRON = "0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6";
-const OLD_SOULPRINT = "0x92c5f242fd75fb85d036db8598a515bc9eb463ab";
+const OLD_CRON = "0x3cadf41dcc651366b23cce43086dd646043c4a6b";
+const OLD_SOULPRINT = "0xbc55dc48cdafb62cc054e1b9424b0429c1750af9";
 
 async function main() {
   const [wallet] = await hre.viem.getWalletClients();

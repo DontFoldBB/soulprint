@@ -1,7 +1,7 @@
 import hre from "hardhat";
 
-const CRON = "0x9f4f4476fa812f37fb2771c48ff7666a4f0cc3e6"; // LIVE cron (criterion #4)
-const SOULPRINT = "0x92c5f242fd75fb85d036db8598a515bc9eb463ab";
+const CRON = "0x3cadf41dcc651366b23cce43086dd646043c4a6b"; // LIVE cron (criterion #4)
+const SOULPRINT = "0xbc55dc48cdafb62cc054e1b9424b0429c1750af9";
 
 async function main() {
   const cron = await hre.viem.getContractAt("SoulprintCron", CRON);

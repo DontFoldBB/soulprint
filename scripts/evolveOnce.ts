@@ -1,6 +1,6 @@
 import hre from "hardhat";
 
-const SOULPRINT = "0x92c5f242fd75fb85d036db8598a515bc9eb463ab";
+const SOULPRINT = "0xbc55dc48cdafb62cc054e1b9424b0429c1750af9";
 
 async function main() {
   const soulprint = await hre.viem.getContractAt("Soulprint", SOULPRINT);
