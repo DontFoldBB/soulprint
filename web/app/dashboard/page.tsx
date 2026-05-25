@@ -28,6 +28,11 @@ const SAMPLE_PROFILE: WalletProfile = {
   activity: SAMPLE_ACTIVITY,
   txCount: 412,
   lastUpdated: Math.floor(Date.now() / 1000) - 2 * 3600,
+  stage: 5,
+  stageName: "Tempered",
+  formId: 6,
+  formSlug: "explorer-3-cartographer-spirit",
+  formName: "Cartographer",
 };
 
 export default function Dashboard() {
@@ -133,6 +138,10 @@ export default function Dashboard() {
             activity={card.activity}
             txCount={card.txCount}
             wallet={cardWallet}
+            imageUrl={card.formSlug ? `/souls/${card.formSlug}.png` : undefined}
+            stage={card.stage}
+            stageName={card.stageName}
+            formName={card.formName}
           />
         </div>
 

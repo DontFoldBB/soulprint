@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Soul Collection · Contact Sheet</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 28px 22px 60px;
+    background: #08080a;
+    color: #e7e9ee;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  h1 { font-weight: 800; letter-spacing: -0.01em; margin: 0 0 6px; }
+  h1 small { color: #6a6a72; font-weight: 500; font-size: 0.55em; margin-left: 12px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .hint { color: #a7a7ad; margin: 0 0 28px; max-width: 56rem; line-height: 1.5; }
+  h2 { font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6a6a72; margin: 26px 0 12px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .cell {
+    background: #0e0e12;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .cell .img-wrap {
+    position: relative;
+    aspect-ratio: 1;
+    background: #000;
+  }
+  .cell img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cell .missing {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: #ef6f6f; font-size: 0.8rem; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: rgba(80, 0, 0, 0.18);
+  }
+  .meta { padding: 10px 12px 12px; }
+  .num {
+    display: inline-block;
+    background: rgba(255,255,255,0.06);
+    color: #a7a7ad;
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+    letter-spacing: 0.06em;
+  }
+  .stage { float: right; font-size: 0.6rem; letter-spacing: 0.18em; color: #6a6a72; text-transform: uppercase; }
+  .slug { font-family: ui-monospace, monospace; font-size: 0.72rem; color: #e7e9ee; word-break: break-all; }
+  .desc { color: #a7a7ad; font-size: 0.75rem; line-height: 1.4; margin-top: 6px; }
+  .accent { color: #9ce6ff; font-size: 0.7rem; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h1>Soul Collection — Contact Sheet <small>30 forms · grayscale + cyan accent</small></h1>
+  <p class="hint">Проверь глазами: на каждой плитке внизу — слаг, описание и «фишка-акцент». Если картинка слева ⇄ описание не совпадают, скажи мне «#N и #M переставлены», и я переименую файлы.</p>
+
+  <h2>Newborn line</h2>
+  <div class="grid" id="newborn"></div>
+
+  <h2>Testnet Explorer line</h2>
+  <div class="grid" id="explorer"></div>
+
+  <h2>DeFi User line</h2>
+  <div class="grid" id="defi"></div>
+
+  <h2>NFT Collector line</h2>
+  <div class="grid" id="nft"></div>
+
+  <h2>Contract Deployer line</h2>
+  <div class="grid" id="deployer"></div>
+
+  <h2>Sybil-Like Farmer line</h2>
+  <div class="grid" id="sybil"></div>
+
+  <h2>Power User line</h2>
+  <div class="grid" id="power"></div>
+
+<script>
+const FORMS = [
+  // [n, group, slug, stage, desc, accent]
+  [1,  'newborn',  'newborn-1-spark-mote',          1,  'Крошечный одинокий спарк на почти пустом фоне, тонкая полоска дыма', 'сам огонёк (мот)'],
+  [2,  'newborn',  'newborn-2-drifting-wisp',       2,  'Маленький дрейфующий wisp серого дыма, начинает закручиваться в каплю', 'внутренний огонёк в центре'],
+  [3,  'newborn',  'newborn-3-ember-shade',         3,  'Маленький призрак в капюшоне из сажи и углей, шлейф пепла',           'смутный «лицо-из-света» под капюшоном'],
+  [4,  'explorer', 'explorer-1-seeker-wisp',        2,  'Стройный wisp-разведчик в капюшоне, пунктирный след-огоньки',          'один глазок под капюшоном'],
+  [5,  'explorer', 'explorer-2-pathfinder-shade',   3,  'Лин cloak-призрак, тонкие белые «нити карты» из плаща',                'компас-руна в ладони'],
+  [6,  'explorer', 'explorer-3-cartographer-spirit',5,  'Призрак в плаще из контурных линий карт и созвездий',                  'фонарь в поднятой руке'],
+  [7,  'explorer', 'explorer-4-voidwalker',         6,  'Высокий шагающий призрак-странник, плащ распадается в обрывки карт',   'гало из 5–7 маяков-узлов вокруг головы'],
+  [8,  'defi',     'defi-1-liquidity-sprite',       3,  'Маленький спрайт из закольцованных жидких лент',                       'капля-сердце в центре'],
+  [9,  'defi',     'defi-2-yield-wraith',           4,  'Безликий wraith из заплетённых серых течений',                         'монетки света сквозь струи'],
+  [10, 'defi',     'defi-3-flux-specter',           6,  'Призрак из переплетённых жидких каналов и кривых-графиков',            'пульсирующие узлы на течениях'],
+  [11, 'defi',     'defi-4-market-phantom',         8,  'Массивный фантом, тело — штормовое море ликвидных потоков',            'candlestick-осколки вокруг торса'],
+  [12, 'defi',     'defi-5-leviathan',              9,  'Огромный змееподобный левиафан из текучего серого света',              'один пронзительный глаз'],
+  [13, 'nft',      'nft-1-curio-imp',               3,  'Маленький имп с серебряной филигранью',                                'осколок-в-рамке в когтях'],
+  [14, 'nft',      'nft-2-gallery-shade',           4,  'Безликий призрак с резными серебряными краями',                        'пустые рамки орбитой вокруг'],
+  [15, 'nft',      'nft-3-aesthete-spirit',         6,  'Кристаллический призрак в резных белых узорах',                        'гранёные гем-осколки на орбите'],
+  [16, 'nft',      'nft-4-curator-sovereign',       8,  'Барочный призрак-государь, серебряная отделка, лицо в тени',           'арочная корона из мини-реликвий-рамок'],
+  [17, 'deployer', 'deployer-1-glyph-sprite',       4,  'Спрайт тянет руку вверх',                                              'одна линия-глиф у кончика пальца'],
+  [18, 'deployer', 'deployer-2-architect-shade',    5,  'Безликий призрак с распростёртыми руками',                             'wireframe-чертежи и леса вокруг рук'],
+  [19, 'deployer', 'deployer-3-forge-specter',      7,  'Призрак-кузнец у эфирной кузницы, молот поднят, белые искры',          'код-глиф формируется на наковальне'],
+  [20, 'deployer', 'deployer-4-protocol-wright',    9,  'Возвышающийся зодчий, руки плетут наружу',                             'огромная геометрическая решётка из рук'],
+  [21, 'deployer', 'deployer-5-genesis-demiurge',  10,  'Монументальный демиург, ладони сложены чашей у груди',                 'маленький космос-вселенная в ладонях'],
+  [22, 'sybil',    'sybil-1-husk-mote',             2,  'Маленький husk с задвоенными/призрачными краями',                      'полый «глаз-пустота» в центре'],
+  [23, 'sybil',    'sybil-2-mirror-shade',          4,  '3–4 одинаковых призрачных копии накладываются',                        'синхронные глаза у всех копий'],
+  [24, 'sybil',    'sybil-3-swarm-wraith',          6,  'Призрак с полым серым ядром-силуэтом',                                 'рой одинаковых мотов вокруг ядра'],
+  [25, 'sybil',    'sybil-4-hydra-of-husks',        7,  'Гидра с 5–6 одинаковыми полыми лицами из одного торса',                'одинаковые глаза у всех лиц'],
+  [26, 'power',    'power-1-adept-spirit',          5,  'Уравновешенный адепт в струящихся серых робах',                        'спокойное ядро в груди'],
+  [27, 'power',    'power-2-ascendant-shade',       7,  'Восходящий призрак с распростёртыми руками',                           'энергетические ленты взмывают вверх'],
+  [28, 'power',    'power-3-sovereign-specter',     8,  'Властный призрак-государь, серебряная аура',                           'корона из света над головой'],
+  [29, 'power',    'power-4-aetherlord',            9,  'Эфирлорд — повелитель эфира из штормовой энергии',                     'молнии-шторм обвивают тело'],
+  [30, 'power',    'power-5-soul-singularity',     10,  'Трансцендентная сингулярность, реальность изгибается внутрь',          'ослепительное ядро-сингулярность в центре'],
+];
+
+for (const [n, group, slug, stage, desc, accent] of FORMS) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.innerHTML = `
+    <div class="img-wrap">
+      <img loading="lazy" src="souls/${slug}.png" alt="${slug}"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
+      <div class="missing" style="display:none">MISSING</div>
+    </div>
+    <div class="meta">
+      <span class="num">#${n}</span>
+      <span class="stage">Stage ${stage}</span>
+      <div class="slug">${slug}</div>
+      <div class="desc">${desc}</div>
+      <div class="accent">★ accent: ${accent}</div>
+    </div>`;
+  document.getElementById(group).appendChild(cell);
+}
+</script>
+</body>
+</html>

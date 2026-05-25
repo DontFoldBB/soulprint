@@ -38,36 +38,157 @@ function Lock() {
   );
 }
 
-/** Address-seeded halftone disc — a unique "soul-print" sigil per wallet.
- *  Ported from DossierCard.tsx; sized to fill the SoulCard avatar slot. */
-function Sigil({ color, glow, seed }: { color: string; glow: string; seed: number }) {
-  const rot = seed % 360;
+/** Deterministic PRNG (mulberry32) — the same wallet always yields the same soul-print. */
+function mulberry32(seedInt: number) {
+  let a = seedInt >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type SigilArt = {
+  paths: string[];
+  minutiae: { x: number; y: number; r: number }[];
+  ticks: { x1: number; y1: number; x2: number; y2: number }[];
+  core: { x: number; y: number };
+};
+
+/** Build an address-seeded "soul fingerprint": warped concentric contour ridges (a
+ *  biometric/topographic look), ridge-ending "minutiae" points, and a perimeter scan-ring.
+ *  Pure math in a 100×100 viewBox, fully deterministic from `seed`. A shared harmonic warp
+ *  with a slow per-ring phase drift keeps ridges parallel (never crossing) yet organic. */
+function buildSigil(seed: number, stars: number): SigilArt {
+  const rnd = mulberry32(seed || 1);
+  const cx = 50 + (rnd() - 0.5) * 9;
+  const cy = 50 + (rnd() - 0.5) * 9;
+
+  const innerR = 6;
+  const outerR = 44;
+  const rings = 14 + Math.floor(rnd() * 4) + stars; // 14–22 ridges; rarer wallets = denser
+  const step = (outerR - innerR) / rings;
+
+  const harmonics = Array.from({ length: 3 }, () => ({
+    f: 2 + Math.floor(rnd() * 4), // frequency 2–5
+    a: 0.18 + rnd() * 0.5, // relative amplitude
+    p: rnd() * Math.PI * 2, // phase
+  }));
+  const ampNorm = harmonics.reduce((s, h) => s + h.a, 0) || 1;
+  const maxWarp = step * 0.46; // < step/2 so ridges never collide
+  const squashX = 0.92 + rnd() * 0.1;
+  const squashY = 0.85 + rnd() * 0.12; // gentle ovalisation
+  const drift = (rnd() - 0.5) * 1.4;
+
+  const warpAt = (th: number, ringI: number) => {
+    let w = 0;
+    for (const h of harmonics) w += h.a * Math.sin(h.f * th + h.p + ringI * 0.16 * drift);
+    return (w / ampNorm) * maxWarp;
+  };
+
+  const SAMPLES = 132;
+  const paths: string[] = [];
+  for (let i = 0; i < rings; i++) {
+    const baseR = innerR + i * step;
+    let d = "";
+    for (let s = 0; s <= SAMPLES; s++) {
+      const th = (s / SAMPLES) * Math.PI * 2;
+      const r = baseR + warpAt(th, i);
+      const x = cx + Math.cos(th) * r * squashX;
+      const y = cy + Math.sin(th) * r * squashY;
+      d += (s === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    }
+    paths.push(d + "Z");
+  }
+
+  const minutiae: SigilArt["minutiae"] = [];
+  const mCount = 4 + Math.floor(rnd() * 2) + stars;
+  for (let m = 0; m < mCount; m++) {
+    const ringI = 2 + Math.floor(rnd() * (rings - 3));
+    const th = rnd() * Math.PI * 2;
+    const r = innerR + ringI * step + warpAt(th, ringI);
+    minutiae.push({ x: cx + Math.cos(th) * r * squashX, y: cy + Math.sin(th) * r * squashY, r: 0.7 + rnd() * 0.7 });
+  }
+
+  const ticks: SigilArt["ticks"] = [];
+  for (let t = 0; t < 60; t++) {
+    if (rnd() > 0.55) continue;
+    const th = (t / 60) * Math.PI * 2;
+    const r0 = outerR + 2.5;
+    const r1 = r0 + 1.4 + rnd() * 1.8;
+    ticks.push({ x1: 50 + Math.cos(th) * r0, y1: 50 + Math.sin(th) * r0, x2: 50 + Math.cos(th) * r1, y2: 50 + Math.sin(th) * r1 });
+  }
+
+  return { paths, minutiae, ticks, core: { x: cx, y: cy } };
+}
+
+/** Address-seeded generative "soul fingerprint" — a unique biometric sigil per wallet.
+ *  Monochrome silver ridges; the rarity tier appears only as a glow/accent (no colour fills). */
+function Sigil({ color, glow, seed, stars }: { color: string; glow: string; seed: number; stars: number }) {
+  const art = useMemo(() => buildSigil(seed, stars), [seed, stars]);
+  const glowId = `sg-glow-${seed}`;
   const mask =
-    "radial-gradient(circle at 50% 50%, black 28%, rgba(0,0,0,0.55) 54%, transparent 72%)";
+    "radial-gradient(circle at 50% 50%, black 66%, rgba(0,0,0,0.55) 84%, transparent 97%)";
   return (
     <div className="relative h-32 w-32 sm:h-36 sm:w-36">
+      {/* disc frame + tier halo */}
       <div
         className="absolute inset-0 rounded-full border"
-        style={{ borderColor: color + "44", boxShadow: `0 0 30px ${glow}` }}
+        style={{ borderColor: color + "33", boxShadow: `0 0 34px ${glow}, inset 0 0 24px ${color}1a` }}
       />
-      <div
-        className="absolute inset-[6px] rounded-full"
-        style={{ border: `1px solid ${color}22` }}
-      />
-      <div
-        className="halftone absolute inset-[10px] rounded-full"
-        style={{
-          color,
-          transform: `rotate(${rot}deg)`,
-          WebkitMaskImage: mask,
-          maskImage: mask,
-          filter: `drop-shadow(0 0 8px ${glow})`,
-        }}
-      />
-      <div
-        className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: color, boxShadow: `0 0 16px ${glow}` }}
-      />
+      <div className="absolute inset-[6px] rounded-full" style={{ border: `1px solid ${color}1c` }} />
+      <svg
+        viewBox="0 0 100 100"
+        className="absolute inset-0 h-full w-full"
+        style={{ WebkitMaskImage: mask, maskImage: mask }}
+        aria-hidden
+      >
+        <defs>
+          <filter id={glowId} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="1.7" />
+          </filter>
+        </defs>
+
+        {/* soft tier-coloured glow beneath the minutiae + core */}
+        <g filter={`url(#${glowId})`} fill={color} opacity="0.55">
+          {art.minutiae.map((m, i) => (
+            <circle key={i} cx={m.x} cy={m.y} r={m.r + 1.1} />
+          ))}
+          <circle cx={art.core.x} cy={art.core.y} r="3.4" />
+        </g>
+
+        {/* fingerprint ridges — silver, brighter at the core, fading outward */}
+        <g fill="none" strokeLinejoin="round" strokeLinecap="round">
+          {art.paths.map((d, i) => {
+            const t = i / art.paths.length; // 0 = innermost ridge, →1 = outermost
+            const isCore = i < 3; // innermost ridges pick up the tier hue
+            return (
+              <path
+                key={i}
+                d={d}
+                stroke={isCore ? color : "#e7e9ee"}
+                strokeWidth={0.58 - t * 0.26}
+                opacity={0.5 - t * 0.36}
+              />
+            );
+          })}
+        </g>
+
+        {/* perimeter scan-ring ticks */}
+        <g stroke={color} strokeWidth="0.5" opacity="0.4" strokeLinecap="round">
+          {art.ticks.map((k, i) => (
+            <line key={i} x1={k.x1} y1={k.y1} x2={k.x2} y2={k.y2} />
+          ))}
+        </g>
+
+        {/* crisp minutiae + bright core */}
+        {art.minutiae.map((m, i) => (
+          <circle key={i} cx={m.x} cy={m.y} r={m.r} fill="#f4f5f8" />
+        ))}
+        <circle cx={art.core.x} cy={art.core.y} r="1.7" fill="#ffffff" />
+        <circle cx={art.core.x} cy={art.core.y} r="3.0" fill="none" stroke={color} strokeWidth="0.5" opacity="0.7" />
+      </svg>
     </div>
   );
 }
@@ -118,9 +239,18 @@ export type SoulCardProps = {
   activity?: number;
   txCount?: number;
   wallet?: string;
+  /** Optional curated AI form image (e.g. /souls/<slug>.png); falls back to generative Sigil. */
+  imageUrl?: string;
+  /** Evolution stage 1..10 (Dormant→Eternal). Renders the 10-dot ladder under the stats. */
+  stage?: number;
+  /** Stage label (e.g. "Tempered"). Appended to the archetype·tier meta line. */
+  stageName?: string;
+  /** Form's canonical title (e.g. "Cartographer Spirit"). Used as the card headline so the
+   *  name actually matches the picture; the LLM's witty TYPE becomes the italic subtitle. */
+  formName?: string;
 };
 
-export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardProps) {
+export function SoulCard({ d, generation, activity, txCount, wallet, imageUrl, stage, stageName, formName }: SoulCardProps) {
   const stars = Math.max(0, Math.min(5, Number(d.rarity ?? 0)));
   const tier = TIERS[(stars > 0 ? stars : 1) - 1];
   const tierName = tier.name;
@@ -328,67 +458,152 @@ export function SoulCard({ d, generation, activity, txCount, wallet }: SoulCardP
             <div ref={wrapRef} className="sc-wrapper">
               <section ref={cardRef} className="sc-card">
                 <div className="sc-inside">
-                  <div className="sc-shine" />
-                  <div className="sc-glare" />
-                  <div className="sc-content">
-                    <div className="sc-top">
-                      <span className="sc-brand">Soulprint</span>
-                      <span className="sc-tier">{tierName}</span>
-                    </div>
-
-                    {/* Avatar slot → address-seeded halftone Sigil (no photo). */}
-                    <div className="sc-avatar">
-                      <Sigil color={tier.color} glow={tier.glow} seed={seed} />
-                    </div>
-
-                    <div className="sc-details">
-                      <h3>{d.type ?? "Unidentified Wallet"}</h3>
-                      <p>{(d.archetype ?? "Wallet") + " · " + tierName}</p>
-                    </div>
-
-                    {/* On-chain stats at a glance */}
-                    <div className="sc-statrow">
-                      <div className="sc-statcell">
-                        <span className="sc-statcell-value" style={{ color: tier.color }}>
-                          {activity ?? "—"}
-                        </span>
-                        <span className="sc-statcell-label">Activity</span>
+                  {imageUrl ? (
+                    <>
+                      {/* The image IS the card front (no inner chrome, no shine/glare). A gentle
+                          floating animation in CSS makes the spirit hover so the still PNG reads
+                          as alive — without distorting pixels (which felt unnatural). */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="sc-art-img" src={imageUrl} alt="" />
+                      {/* hue retint: only chromatic accent pixels (lantern/eyes/crown/…) take the tier color */}
+                      <div
+                        className="sc-art-hue"
+                        style={{ background: tier.color, mixBlendMode: "hue" }}
+                      />
+                      <div className="sc-content is-art">
+                        <div className="sc-art-top">
+                          <span className="sc-brand">Soulprint</span>
+                          <span className="sc-tier">{tierName}</span>
+                        </div>
+                        <div className="sc-art-overlay">
+                          <h3>{formName ?? d.type ?? "Unknown Soul"}</h3>
+                          {formName && d.type && (
+                            <p className="sc-art-nick">aka &ldquo;{d.type}&rdquo;</p>
+                          )}
+                          {d.style && (
+                            <p className="sc-art-vibe">&ldquo;{d.style.replace(/^"|"$/g, "")}&rdquo;</p>
+                          )}
+                          <p>
+                            {[
+                              d.archetype ?? "Wallet",
+                              tierName,
+                              d.karma ? `Karma ${d.karma}` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          <div className="sc-art-stats">
+                            <div>
+                              <span className="sc-art-stat-v" style={{ color: tier.color }}>
+                                {activity ?? "—"}
+                              </span>
+                              <span className="sc-art-stat-l">Activity</span>
+                            </div>
+                            <div>
+                              <span className="sc-art-stat-v">
+                                {txCount !== undefined ? txCount.toLocaleString("en-US") : "—"}
+                              </span>
+                              <span className="sc-art-stat-l">Txns</span>
+                            </div>
+                            <div>
+                              <span className="sc-art-stat-v">{generation ?? "—"}</span>
+                              <span className="sc-art-stat-l">Gen</span>
+                            </div>
+                          </div>
+                          {stage !== undefined && (
+                            <div
+                              className="sc-art-ladder"
+                              aria-label={`Stage ${stage} of 10`}
+                              title={`Stage ${stage} / 10`}
+                            >
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const n = i + 1;
+                                const cls = n === stage ? "is-cur" : n < stage ? "is-on" : "";
+                                return <span key={n} className={cls} />;
+                              })}
+                            </div>
+                          )}
+                          <div className="sc-userinfo">
+                            <div className="sc-user-text">
+                              <span className="sc-handle">{shortAddr(wallet)}</span>
+                              <span className="sc-status">
+                                {generation !== undefined ? `gen ${generation} · ` : ""}soulbound
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="sc-copy-btn"
+                              onClick={onCopy}
+                              disabled={!wallet}
+                            >
+                              {copyState === "copied"
+                                ? "Copied!"
+                                : copyState === "failed"
+                                ? "Copy failed"
+                                : "Copy address"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="sc-statcell">
-                        <span className="sc-statcell-value">
-                          {txCount !== undefined ? txCount.toLocaleString("en-US") : "—"}
-                        </span>
-                        <span className="sc-statcell-label">Txns</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="sc-shine" />
+                      <div className="sc-glare" />
+                      <div className="sc-content">
+                        <div className="sc-top">
+                          <span className="sc-brand">Soulprint</span>
+                          <span className="sc-tier">{tierName}</span>
+                        </div>
+                        <div className="sc-avatar">
+                          <Sigil color={tier.color} glow={tier.glow} seed={seed} stars={stars} />
+                        </div>
+                        <div className="sc-details">
+                          <h3>{d.type ?? "Unidentified Wallet"}</h3>
+                          <p>{(d.archetype ?? "Wallet") + " · " + tierName}</p>
+                        </div>
+                        <div className="sc-statrow">
+                          <div className="sc-statcell">
+                            <span className="sc-statcell-value" style={{ color: tier.color }}>
+                              {activity ?? "—"}
+                            </span>
+                            <span className="sc-statcell-label">Activity</span>
+                          </div>
+                          <div className="sc-statcell">
+                            <span className="sc-statcell-value">
+                              {txCount !== undefined ? txCount.toLocaleString("en-US") : "—"}
+                            </span>
+                            <span className="sc-statcell-label">Txns</span>
+                          </div>
+                          <div className="sc-statcell">
+                            <span className="sc-statcell-value">{generation ?? "—"}</span>
+                            <span className="sc-statcell-label">Gen</span>
+                          </div>
+                        </div>
+                        <div className="sc-spacer" />
+                        <div className="sc-userinfo">
+                          <div className="sc-user-text">
+                            <span className="sc-handle">{shortAddr(wallet)}</span>
+                            <span className="sc-status">
+                              {generation !== undefined ? `gen ${generation} · ` : ""}soulbound
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="sc-copy-btn"
+                            onClick={onCopy}
+                            disabled={!wallet}
+                          >
+                            {copyState === "copied"
+                              ? "Copied!"
+                              : copyState === "failed"
+                              ? "Copy failed"
+                              : "Copy address"}
+                          </button>
+                        </div>
                       </div>
-                      <div className="sc-statcell">
-                        <span className="sc-statcell-value">{generation ?? "—"}</span>
-                        <span className="sc-statcell-label">Gen</span>
-                      </div>
-                    </div>
-
-                    <div className="sc-spacer" />
-
-                    <div className="sc-userinfo">
-                      <div className="sc-user-text">
-                        <span className="sc-handle">{shortAddr(wallet)}</span>
-                        <span className="sc-status">
-                          {generation !== undefined ? `gen ${generation} · ` : ""}soulbound
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="sc-copy-btn"
-                        onClick={onCopy}
-                        disabled={!wallet}
-                      >
-                        {copyState === "copied"
-                          ? "Copied!"
-                          : copyState === "failed"
-                          ? "Copy failed"
-                          : "Copy address"}
-                      </button>
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
               </section>
             </div>

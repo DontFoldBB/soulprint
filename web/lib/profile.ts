@@ -2,6 +2,7 @@
 
 import { pub } from "./wallet";
 import { SOULPRINT_ADDRESS, SOULPRINT_ABI, parseDossier, type Dossier } from "./soulprint";
+import { deriveForm } from "./evolution";
 
 export type WalletProfile = {
   dossier: Dossier;
@@ -10,6 +11,15 @@ export type WalletProfile = {
   activity?: number;
   txCount?: number;
   lastUpdated?: number;
+  /** Evolution stage 1..10 (Dormant → Eternal), derived from tx_count. */
+  stage?: number;
+  stageName?: string;
+  /** Spirit form id 1..30 (which of the 30 souls — picked by archetype+stage). */
+  formId?: number;
+  /** Slug used to load /souls/<slug>.png from the public folder. */
+  formSlug?: string;
+  /** Human-readable form title (e.g. "Cartographer Spirit") for the card headline. */
+  formName?: string;
 };
 
 async function readNum(
@@ -100,6 +110,7 @@ export async function loadWalletProfile(
     readNum("txCountOf", profile.tokenId),
     readNum("lastUpdated", profile.tokenId),
   ]);
+  const evo = deriveForm(dossier.archetype, txCount);
   return {
     dossier,
     tokenId: profile.tokenId,
@@ -107,5 +118,10 @@ export async function loadWalletProfile(
     activity: traits?.activity,
     txCount,
     lastUpdated,
+    stage: evo.stage,
+    stageName: evo.stageName,
+    formId: evo.formId,
+    formSlug: evo.slug,
+    formName: evo.name,
   };
 }
