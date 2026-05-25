@@ -13,6 +13,7 @@ import {
 } from "@/lib/soulprint";
 import { pub, walletClient, ensureChain, connect, detectAddress } from "@/lib/wallet";
 import { loadWalletProfile, type WalletProfile } from "@/lib/profile";
+import { deriveForm } from "@/lib/evolution";
 import { loadEcosystem, buildActivity } from "@/lib/dashboard";
 import { useWatchlist } from "@/lib/watchlist";
 import { SoulCard } from "@/components/SoulCard";
@@ -150,6 +151,7 @@ export default function Home() {
     setBusy(false);
     setStatus("");
     setPreview(true);
+    const sampleEvo = deriveForm(SAMPLE_DOSSIER.archetype, 412);
     setResult({
       dossier: SAMPLE_DOSSIER,
       tokenId: 7,
@@ -157,6 +159,11 @@ export default function Home() {
       activity: SAMPLE_ACTIVITY,
       txCount: 412,
       lastUpdated: Math.floor(Date.now() / 1000) - 2 * 3600,
+      stage: sampleEvo.stage,
+      stageName: sampleEvo.stageName,
+      formId: sampleEvo.formId,
+      formSlug: sampleEvo.slug,
+      formName: sampleEvo.name,
     });
   }
 
@@ -254,6 +261,10 @@ export default function Home() {
                 activity={result.activity}
                 txCount={result.txCount}
                 wallet={cardWallet}
+                imageUrl={result.formSlug ? `/souls/${result.formSlug}.png` : undefined}
+                stage={result.stage}
+                stageName={result.stageName}
+                formName={result.formName}
               />
               {!preview && isAddress(address) && (
                 <div className="flex justify-center">

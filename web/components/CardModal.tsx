@@ -57,6 +57,10 @@ export function CardModal({
               activity={profile.activity}
               txCount={profile.txCount}
               wallet={wallet}
+              imageUrl={profile.formSlug ? `/souls/${profile.formSlug}.png` : undefined}
+              stage={profile.stage}
+              stageName={profile.stageName}
+              formName={profile.formName}
             />
             <div className="mt-4">
               <EvolutionTimeline
