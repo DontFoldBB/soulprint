@@ -445,4 +445,68 @@ describe("Soulprint", () => {
     await cron.write.forceReset(); // owner ok
     expect(await cron.read.subscriptionId()).to.equal(0n);
   });
+
+  // ── Soul evolution: Stage 1..10 + Form 1..30 (on-chain) ──
+  async function mintWith(txCount: bigint, archetype: string) {
+    const { soulprint, platform, user } = await deploy();
+    const dossier = `TYPE: Test, Type II\nARCHETYPE: ${archetype}\nKARMA: +1\nRARITY: 3`;
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(txCount), Success]);
+    await platform.write.deliver([2n, dossierResult(dossier), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+    return { soulprint, tokenId };
+  }
+
+  it("derives Stage 1 for a brand-new wallet (low tx_count)", async () => {
+    const { soulprint, tokenId } = await mintWith(3n, "Newborn Wallet");
+    expect(await soulprint.read.stageOf([tokenId])).to.equal(1);
+    expect(await soulprint.read.formIdOf([tokenId])).to.equal(1);   // newborn-1-spark-mote
+    expect(await soulprint.read.formSlugOf([tokenId])).to.equal("newborn-1-spark-mote");
+  });
+
+  it("derives mid-Stage (~5) for a mid-activity DeFi User", async () => {
+    const { soulprint, tokenId } = await mintWith(220n, "DeFi User");
+    expect(await soulprint.read.stageOf([tokenId])).to.equal(5);
+    // DeFi line at stage 5 (≥4 threshold) → defi-2-yield-wraith (formId 9)
+    expect(await soulprint.read.formIdOf([tokenId])).to.equal(9);
+    expect(await soulprint.read.formSlugOf([tokenId])).to.equal("defi-2-yield-wraith");
+  });
+
+  it("derives apex Stage 10 + Soul Singularity for an extremely active Power User", async () => {
+    const { soulprint, tokenId } = await mintWith(250_000n, "Power User");
+    expect(await soulprint.read.stageOf([tokenId])).to.equal(10);
+    expect(await soulprint.read.formIdOf([tokenId])).to.equal(30); // power-5-soul-singularity
+    expect(await soulprint.read.formSlugOf([tokenId])).to.equal("power-5-soul-singularity");
+  });
+
+  it("falls back to the Newborn line when ARCHETYPE is missing/unknown", async () => {
+    const { soulprint, tokenId } = await mintWith(8n, "Made-Up Archetype");
+    expect(await soulprint.read.stageOf([tokenId])).to.equal(2);
+    expect(await soulprint.read.formIdOf([tokenId])).to.equal(2);   // newborn-2-drifting-wisp
+  });
+
+  it("exposes evolutionOf(wallet) for composable agent reads and adds Stage+Form to tokenURI", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(2_500n), Success]); // Stage 7
+    await platform.write.deliver([
+      2n,
+      dossierResult("TYPE: Forge Master, Type IV\nARCHETYPE: Contract Deployer\nKARMA: +3\nRARITY: 4"),
+      Success,
+    ]);
+
+    const evo = await soulprint.read.evolutionOf([user.account.address]);
+    expect(evo[0]).to.equal(7);                          // stage
+    expect(evo[1]).to.equal(19);                         // formId — deployer-3-forge-specter
+    expect(evo[2]).to.equal("deployer-3-forge-specter"); // slug
+
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+    const uri = await soulprint.read.tokenURI([tokenId]);
+    const json = JSON.parse(Buffer.from(uri.split(",")[1], "base64").toString("utf8"));
+    const traits: Record<string, unknown> = Object.fromEntries(
+      json.attributes.map((a: { trait_type: string; value: unknown }) => [a.trait_type, a.value])
+    );
+    expect(traits.Stage).to.equal(7);
+    expect(traits.Form).to.equal("deployer-3-forge-specter");
+  });
 });

@@ -40,6 +40,8 @@ contract Soulprint is ERC721 {
     mapping(uint256 => uint256) public txCountOf;     // tokenId -> tx count at last update
     mapping(uint256 => uint256) public generation;    // tokenId -> version
     mapping(uint256 => uint256) public lastUpdated;   // tokenId -> timestamp
+    mapping(uint256 => uint8)   public stageOf;       // tokenId -> evolution stage 1..10
+    mapping(uint256 => uint8)   public formIdOf;      // tokenId -> spirit form 1..30 (see _formSlug)
     mapping(address => uint256) public paidByWallet;  // escrowed mint amount
     mapping(address => bool)    public pendingRead;   // wallet -> a pipeline is in flight
     address[] public registeredWallets;
@@ -260,6 +262,12 @@ contract Soulprint is ERC721 {
         txCountOf[tokenId] = ctx.txCount;
         generation[tokenId] += 1;
         lastUpdated[tokenId] = block.timestamp;
+        // Derive on-chain stage (1..10 from tx_count) and form (1..30 from archetype+stage) so
+        // they're verifiable + composable for other contracts/agents, not just the LLM text.
+        uint8 newStage = _stageFromTxCount(ctx.txCount);
+        uint8 archIdx = _archetypeIdx(_extractField(text, "ARCHETYPE:"));
+        stageOf[tokenId] = newStage;
+        formIdOf[tokenId] = _formIdFor(archIdx, newStage);
         pendingRead[ctx.wallet] = false;
         emit DossierUpdated(tokenId, generation[tokenId]);
     }
@@ -315,6 +323,143 @@ contract Soulprint is ERC721 {
         return string(out);
     }
 
+    /// @notice Evolution stage (1..10) for a token — derived from on-chain tx_count buckets.
+    /// Higher tx_count ⇒ higher stage (Dormant → Eternal). Verifiable, no LLM needed.
+    /// Combined with the LLM-assigned archetype it picks the spirit form (`formIdOf`).
+    /// @notice Spirit form id (1..30) — see `formSlugOf` for the human-readable slug.
+    /// Form = lookup(archetype, stage) per the design spec; each of 7 archetype lines
+    /// branches into a few forms gated by stage threshold.
+    function formSlugOf(uint256 tokenId) public view returns (string memory) {
+        _requireOwned(tokenId);
+        return _formSlug(formIdOf[tokenId]);
+    }
+
+    /// @notice Composable evolution view for other contracts/agents: stage, formId, formSlug.
+    function evolutionOf(address wallet)
+        external
+        view
+        returns (uint8 stage, uint8 formId, string memory formSlug)
+    {
+        uint256 tokenId = soulprintOf[wallet];
+        if (tokenId == 0) return (0, 0, "");
+        uint8 fid = formIdOf[tokenId];
+        return (stageOf[tokenId], fid, _formSlug(fid));
+    }
+
+    /// @dev tx_count → evolution stage (1..10). Thresholds tuned for typical on-chain
+    /// magnitudes; lower bounds friendly to testnet wallets (Stage 2 at ≥5 tx).
+    function _stageFromTxCount(uint256 txc) internal pure returns (uint8) {
+        if (txc >= 200000) return 10;
+        if (txc >= 50000)  return 9;
+        if (txc >= 10000)  return 8;
+        if (txc >= 2000)   return 7;
+        if (txc >= 600)    return 6;
+        if (txc >= 200)    return 5;
+        if (txc >= 75)     return 4;
+        if (txc >= 20)     return 3;
+        if (txc >= 5)      return 2;
+        return 1;
+    }
+
+    /// @dev Canonical archetype string → index 1..7 (0 = unknown). Mirrors the 7 lines.
+    function _archetypeIdx(string memory s) internal pure returns (uint8) {
+        bytes32 h = keccak256(bytes(s));
+        if (h == keccak256(bytes("Newborn Wallet")))    return 1;
+        if (h == keccak256(bytes("Testnet Explorer")))  return 2;
+        if (h == keccak256(bytes("DeFi User")))         return 3;
+        if (h == keccak256(bytes("NFT Collector")))     return 4;
+        if (h == keccak256(bytes("Contract Deployer"))) return 5;
+        if (h == keccak256(bytes("Sybil-Like Farmer"))) return 6;
+        if (h == keccak256(bytes("Power User")))        return 7;
+        return 0;
+    }
+
+    /// @dev FORM_TABLE[archetype][stage] → formId. Each archetype has an evolution line
+    /// whose forms are gated by stage thresholds (highest reached form wins). See
+    /// docs/specs/2026-05-23-soul-evolution-system.md §4.
+    function _formIdFor(uint8 arch, uint8 stage) internal pure returns (uint8) {
+        if (arch == 1 || arch == 0) { // Newborn (also fallback for unknown)
+            if (stage >= 3) return 3;
+            if (stage >= 2) return 2;
+            return 1;
+        }
+        if (arch == 2) { // Testnet Explorer
+            if (stage >= 6) return 7;
+            if (stage >= 5) return 6;
+            if (stage >= 3) return 5;
+            return 4;
+        }
+        if (arch == 3) { // DeFi User
+            if (stage >= 9) return 12;
+            if (stage >= 8) return 11;
+            if (stage >= 6) return 10;
+            if (stage >= 4) return 9;
+            return 8;
+        }
+        if (arch == 4) { // NFT Collector
+            if (stage >= 8) return 16;
+            if (stage >= 6) return 15;
+            if (stage >= 4) return 14;
+            return 13;
+        }
+        if (arch == 5) { // Contract Deployer
+            if (stage >= 10) return 21;
+            if (stage >= 9)  return 20;
+            if (stage >= 7)  return 19;
+            if (stage >= 5)  return 18;
+            return 17;
+        }
+        if (arch == 6) { // Sybil-Like Farmer
+            if (stage >= 7) return 25;
+            if (stage >= 6) return 24;
+            if (stage >= 4) return 23;
+            return 22;
+        }
+        if (arch == 7) { // Power User
+            if (stage >= 10) return 30;
+            if (stage >= 9)  return 29;
+            if (stage >= 8)  return 28;
+            if (stage >= 7)  return 27;
+            return 26;
+        }
+        return 1;
+    }
+
+    /// @dev formId → slug. Matches the asset filenames in web/public/souls/<slug>.png.
+    function _formSlug(uint8 formId) internal pure returns (string memory) {
+        if (formId == 1)  return "newborn-1-spark-mote";
+        if (formId == 2)  return "newborn-2-drifting-wisp";
+        if (formId == 3)  return "newborn-3-ember-shade";
+        if (formId == 4)  return "explorer-1-seeker-wisp";
+        if (formId == 5)  return "explorer-2-pathfinder-shade";
+        if (formId == 6)  return "explorer-3-cartographer-spirit";
+        if (formId == 7)  return "explorer-4-voidwalker";
+        if (formId == 8)  return "defi-1-liquidity-sprite";
+        if (formId == 9)  return "defi-2-yield-wraith";
+        if (formId == 10) return "defi-3-flux-specter";
+        if (formId == 11) return "defi-4-market-phantom";
+        if (formId == 12) return "defi-5-leviathan";
+        if (formId == 13) return "nft-1-curio-imp";
+        if (formId == 14) return "nft-2-gallery-shade";
+        if (formId == 15) return "nft-3-aesthete-spirit";
+        if (formId == 16) return "nft-4-curator-sovereign";
+        if (formId == 17) return "deployer-1-glyph-sprite";
+        if (formId == 18) return "deployer-2-architect-shade";
+        if (formId == 19) return "deployer-3-forge-specter";
+        if (formId == 20) return "deployer-4-protocol-wright";
+        if (formId == 21) return "deployer-5-genesis-demiurge";
+        if (formId == 22) return "sybil-1-husk-mote";
+        if (formId == 23) return "sybil-2-mirror-shade";
+        if (formId == 24) return "sybil-3-swarm-wraith";
+        if (formId == 25) return "sybil-4-hydra-of-husks";
+        if (formId == 26) return "power-1-adept-spirit";
+        if (formId == 27) return "power-2-ascendant-shade";
+        if (formId == 28) return "power-3-sovereign-specter";
+        if (formId == 29) return "power-4-aetherlord";
+        if (formId == 30) return "power-5-soul-singularity";
+        return "";
+    }
+
     // ──────────────────────────────────────────────
     // Autonomous evolution
     // ──────────────────────────────────────────────
@@ -357,6 +502,8 @@ contract Soulprint is ERC721 {
             '","attributes":[',
                 '{"trait_type":"Archetype","value":', _jsonString(archetypeOf(tokenId)), '},',
                 '{"trait_type":"Activity","value":', Strings.toString(activityScore(tokenId)), '},',
+                '{"trait_type":"Stage","value":', Strings.toString(uint256(stageOf[tokenId])), '},',
+                '{"trait_type":"Form","value":', _jsonString(_formSlug(formIdOf[tokenId])), '},',
                 '{"trait_type":"Generation","value":', gen, '}',
             '],"dossier":', _jsonString(dossier[tokenId]), '}'
         );
