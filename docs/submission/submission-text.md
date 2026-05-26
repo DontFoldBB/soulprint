@@ -127,17 +127,19 @@ https://soulprint-psi.vercel.app
 
 The form's limit is 25 MB *per file*; multiple files allowed. Easiest path:
 
-**Option A — drop these three files** (recommended, ~270 KB total):
+**Option A — drop these three files** (recommended, ~3.4 MB total):
 | File | Size | What it is |
 |---|---:|---|
-| `soulprint-deck.pdf` | 195 KB | The 12-slide pitch deck. |
+| `soulprint-deck.pdf` | 3.3 MB | The 12-slide pitch deck. |
 | `architecture.png` | 70 KB | One-look architecture diagram (PNG — universal). |
-| `submission-text.md` | 7.5 KB | The Challenge Explanation + Submission Details in plain text. |
+| `submission-text.md` | 8 KB | The Challenge Explanation + Submission Details in plain text. |
 
 **Option B — drop ONE bundle** (if the form rejects multi-select):
-- `soulprint-submission-bundle.zip` (213 KB) — contains deck PDF, architecture PNG + SVG, and submission text.
+- `soulprint-submission-bundle.zip` (3.3 MB) — contains deck PDF, architecture PNG + SVG, and submission text.
 
 **Also in this folder, not for upload** (kept for transparency / re-generation):
-- `soulprint-deck.pptx` — editable PowerPoint source of the deck.
+- `soulprint-deck.pptx` (12 MB) — editable PowerPoint source of the deck.
 - `architecture.svg` — vector source of the diagram.
-- `build-deck.js` — pptxgenjs generator script (`node build-deck.js` re-renders the PPTX).
+- `chatgpt-prompts.md` — the prompts used in ChatGPT to design the deck + diagram.
+- `build-deck.js` — the original pptxgenjs generator (kept as a fallback; the current
+  PPTX is the externally-designed ChatGPT version, not the output of this script).
