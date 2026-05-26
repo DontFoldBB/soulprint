@@ -13,6 +13,7 @@ import { loadWalletProfile, type WalletProfile } from "@/lib/profile";
 import { loadEcosystem } from "@/lib/dashboard";
 import { useWatchlist } from "@/lib/watchlist";
 import { SoulCard } from "@/components/SoulCard";
+import { BoostButton } from "@/components/BoostButton";
 import { StatStrip } from "@/components/StatStrip";
 import { EvolutionTimeline } from "@/components/EvolutionTimeline";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -33,6 +34,7 @@ const SAMPLE_PROFILE: WalletProfile = {
   formId: 6,
   formSlug: "explorer-3-cartographer-spirit",
   formName: "Cartographer",
+  fuelEvosLeft: 3,
 };
 
 export default function Dashboard() {
@@ -142,8 +144,15 @@ export default function Dashboard() {
             stage={card.stage}
             stageName={card.stageName}
             formName={card.formName}
+            fuelEvosLeft={card.fuelEvosLeft}
           />
         </div>
+
+        {!sampleCard && card.tokenId > 0 && (
+          <div className="mt-5 flex justify-center">
+            <BoostButton tokenId={card.tokenId} />
+          </div>
+        )}
 
         <div className="mt-6 w-full max-w-md">
           <EvolutionTimeline

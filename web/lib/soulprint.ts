@@ -1,5 +1,5 @@
 // Set this to the deployed Soulprint contract address after running scripts/deploy.ts
-export const SOULPRINT_ADDRESS = "0xbc55dc48cdafb62cc054e1b9424b0429c1750af9" as `0x${string}`;
+export const SOULPRINT_ADDRESS = "0x6876041cc67f9cd1b11e6e1827b13f3622d256e5" as `0x${string}`;
 
 // Minimal ABI used by the frontend.
 export const SOULPRINT_ABI = [
@@ -110,6 +110,32 @@ export const SOULPRINT_ABI = [
   {
     type: "function",
     name: "MINT_PRICE",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  // ── Prepaid Evolution Fuel ─────────────────────────────────────────────────
+  {
+    type: "function",
+    name: "evolutionFuel",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [
+      { name: "balance", type: "uint256" },
+      { name: "costPerEvolution", type: "uint256" },
+      { name: "evolutionsRemaining", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "topUpEvolution",
+    stateMutability: "payable",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "EVOLUTION_COST",
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],

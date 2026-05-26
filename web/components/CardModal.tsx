@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { WalletProfile } from "@/lib/profile";
 import { SoulCard } from "./SoulCard";
 import { EvolutionTimeline } from "./EvolutionTimeline";
+import { BoostButton } from "./BoostButton";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
@@ -61,7 +62,11 @@ export function CardModal({
               stage={profile.stage}
               stageName={profile.stageName}
               formName={profile.formName}
+              fuelEvosLeft={profile.fuelEvosLeft}
             />
+            <div className="mt-4 flex justify-center">
+              <BoostButton tokenId={profile.tokenId} />
+            </div>
             <div className="mt-4">
               <EvolutionTimeline
                 generation={profile.generation}

@@ -789,6 +789,35 @@
   box-shadow: 0 0 10px var(--tier-color), 0 0 4px #ffffff;
   transform: scale(1.45);
 }
+/* Prepaid evolution-fuel indicator. Single muted line; turns ember-red when empty
+ * (calls out the "soul is paused" state without being alarmist). */
+.sc-art-fuel {
+  margin-top: 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  pointer-events: auto;
+  cursor: help;
+}
+.sc-art-fuel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(120, 200, 140, 0.85);
+  box-shadow: 0 0 6px rgba(120, 200, 140, 0.55);
+}
+.sc-art-fuel.is-empty {
+  color: rgba(255, 150, 120, 0.78);
+}
+.sc-art-fuel.is-empty .sc-art-fuel-dot {
+  background: rgba(255, 120, 90, 0.92);
+  box-shadow: 0 0 7px rgba(255, 120, 90, 0.6);
+}
 /* Slow, asymmetric floating motion — the spirit gently hovers inside the card so the still
    PNG reads as alive. Small magnitudes and uneven keyframes keep it from feeling mechanical
    or "underwater". The card's cursor-tilt still applies on top of this. */

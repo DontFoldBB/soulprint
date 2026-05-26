@@ -17,6 +17,7 @@ import { deriveForm } from "@/lib/evolution";
 import { loadEcosystem, buildActivity } from "@/lib/dashboard";
 import { useWatchlist } from "@/lib/watchlist";
 import { SoulCard } from "@/components/SoulCard";
+import { BoostButton } from "@/components/BoostButton";
 import { DossierSkeleton } from "@/components/DossierSkeleton";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { TopNav } from "@/components/TopNav";
@@ -164,6 +165,7 @@ export default function Home() {
       formId: sampleEvo.formId,
       formSlug: sampleEvo.slug,
       formName: sampleEvo.name,
+      fuelEvosLeft: 3,
     });
   }
 
@@ -265,9 +267,10 @@ export default function Home() {
                 stage={result.stage}
                 stageName={result.stageName}
                 formName={result.formName}
+                fuelEvosLeft={result.fuelEvosLeft}
               />
               {!preview && isAddress(address) && (
-                <div className="flex justify-center">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   <button
                     onClick={() =>
                       watch.has(address)
@@ -278,6 +281,7 @@ export default function Home() {
                   >
                     {watch.has(address) ? "★ Watching — tap to unfollow" : "☆ Watch this wallet"}
                   </button>
+                  <BoostButton tokenId={result.tokenId} />
                 </div>
               )}
             </div>

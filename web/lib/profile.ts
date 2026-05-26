@@ -20,6 +20,12 @@ export type WalletProfile = {
   formSlug?: string;
   /** Human-readable form title (e.g. "Cartographer Spirit") for the card headline. */
   formName?: string;
+  /** Prepaid evolution fuel for this soul (in wei). Zero = soul is paused; anyone can topUp. */
+  fuelWei?: bigint;
+  /** Per-evolution cost in wei (constant from the contract). */
+  fuelCostWei?: bigint;
+  /** Full evolutions this soul can still afford autonomously. */
+  fuelEvosLeft?: number;
 };
 
 async function readNum(
@@ -106,9 +112,10 @@ export async function loadWalletProfile(
   const traits = await tryTraits(wallet);
   const dossier = parseDossier(profile.raw);
   if (traits?.archetype && !dossier.archetype) dossier.archetype = traits.archetype;
-  const [txCount, lastUpdated] = await Promise.all([
+  const [txCount, lastUpdated, fuel] = await Promise.all([
     readNum("txCountOf", profile.tokenId),
     readNum("lastUpdated", profile.tokenId),
+    readFuel(profile.tokenId),
   ]);
   const evo = deriveForm(dossier.archetype, txCount);
   return {
@@ -123,5 +130,23 @@ export async function loadWalletProfile(
     formId: evo.formId,
     formSlug: evo.slug,
     formName: evo.name,
+    fuelWei: fuel?.balance,
+    fuelCostWei: fuel?.cost,
+    fuelEvosLeft: fuel ? Number(fuel.evosLeft) : undefined,
   };
+}
+
+// Reads evolutionFuel(tokenId) on the new build; returns undefined on older contracts.
+async function readFuel(tokenId: number): Promise<{ balance: bigint; cost: bigint; evosLeft: bigint } | undefined> {
+  try {
+    const r = (await pub.readContract({
+      address: SOULPRINT_ADDRESS,
+      abi: SOULPRINT_ABI,
+      functionName: "evolutionFuel",
+      args: [BigInt(tokenId)],
+    })) as readonly [bigint, bigint, bigint];
+    return { balance: r[0], cost: r[1], evosLeft: r[2] };
+  } catch {
+    return undefined;
+  }
 }

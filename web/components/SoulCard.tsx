@@ -248,9 +248,11 @@ export type SoulCardProps = {
   /** Form's canonical title (e.g. "Cartographer Spirit"). Used as the card headline so the
    *  name actually matches the picture; the LLM's witty TYPE becomes the italic subtitle. */
   formName?: string;
+  /** Prepaid evolutions this soul can still afford autonomously (0 → soul is paused). */
+  fuelEvosLeft?: number;
 };
 
-export function SoulCard({ d, generation, activity, txCount, wallet, imageUrl, stage, stageName, formName }: SoulCardProps) {
+export function SoulCard({ d, generation, activity, txCount, wallet, imageUrl, stage, stageName, formName, fuelEvosLeft }: SoulCardProps) {
   const stars = Math.max(0, Math.min(5, Number(d.rarity ?? 0)));
   const tier = TIERS[(stars > 0 ? stars : 1) - 1];
   const tierName = tier.name;
@@ -521,6 +523,23 @@ export function SoulCard({ d, generation, activity, txCount, wallet, imageUrl, s
                                 const cls = n === stage ? "is-cur" : n < stage ? "is-on" : "";
                                 return <span key={n} className={cls} />;
                               })}
+                            </div>
+                          )}
+                          {fuelEvosLeft !== undefined && (
+                            <div
+                              className={`sc-art-fuel ${fuelEvosLeft === 0 ? "is-empty" : ""}`}
+                              title={
+                                fuelEvosLeft === 0
+                                  ? "Out of fuel — soul is paused. Boost it to resume autonomous evolution."
+                                  : `Prepaid for ${fuelEvosLeft} more autonomous evolution${fuelEvosLeft === 1 ? "" : "s"}`
+                              }
+                            >
+                              <span className="sc-art-fuel-dot" />
+                              <span className="sc-art-fuel-label">
+                                {fuelEvosLeft === 0
+                                  ? "fuel · empty"
+                                  : `fuel · ${fuelEvosLeft} evo${fuelEvosLeft === 1 ? "" : "s"}`}
+                              </span>
                             </div>
                           )}
                           <div className="sc-userinfo">
