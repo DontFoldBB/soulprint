@@ -12,7 +12,7 @@ Built for the **Encode Club × Somnia Agentathon** (May–June 2026).
 
 <!-- TODO before submission: replace with a 3–6s GIF of the mint flow (paste wallet → dossier card) -->
 > 📹 **Demo video:** _<link — 2–5 min walkthrough>_ · 🔴 **Live on Somnia Shannon testnet**
-> · 🎬 Recording recipe: [`docs/demo-runbook.md`](docs/demo-runbook.md)
+> · 🎬 Strategy + shot map: [`docs/demo-runbook.md`](docs/demo-runbook.md) · second-by-second shooting script + locked narration: [`docs/demo-recording-script.md`](docs/demo-recording-script.md)
 
 ---
 

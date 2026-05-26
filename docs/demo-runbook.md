@@ -1,8 +1,11 @@
-# Soulprint — Demo Video Runbook
+# Soulprint — Demo Video Runbook (strategic overview)
 
-> Step-by-step recipe for the 2–5 minute Encode submission video. Target length: **3:00**.
-> Format: screen recording + voice-over (Google TTS / ElevenLabs over the English script below).
-> Everything is rehearsed once dry, then recorded once for real.
+> Target length: **3:00**. Format: screen recording + TTS voice-over.
+>
+> **For the actual recording**, use the second-by-second shooting script with locked narration
+> at [`docs/demo-recording-script.md`](demo-recording-script.md). That doc has the click-by-click
+> shot list, locked TTS-ready narration text, MetaMask cues, and the post-record mixing guide.
+> THIS doc is the strategic overview — pre-flight checklist, fallback plans, things to NOT say.
 
 ---
 
