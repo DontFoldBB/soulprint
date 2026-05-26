@@ -12,6 +12,7 @@ Built for the **Encode Club × Somnia Agentathon** (May–June 2026).
 
 <!-- TODO before submission: replace with a 3–6s GIF of the mint flow (paste wallet → dossier card) -->
 > 📹 **Demo video:** _<link — 2–5 min walkthrough>_ · 🔴 **Live on Somnia Shannon testnet**
+> · 🎬 Recording recipe: [`docs/demo-runbook.md`](docs/demo-runbook.md)
 
 ---
 
@@ -51,10 +52,10 @@ the answer (gating, scoring, reputation, matchmaking). The included `ExampleGate
 
 | Criterion | What Soulprint does | Status |
 |---|---|---|
-| **1. Functionality** | Full read → AI → soulbound mint pipeline **deployed and working live** on Shannon testnet, ~6s end to end. **31 Hardhat tests** green. | ✅ Live |
-| **2. Agent-First Design** | The contract **orchestrates two base agents** (JSON API → LLM) in one pipeline. `read(wallet)` + `ProfileRequested` let any agent trigger a run; `profileOf` / `traitsOf` let any contract consume the result. Live consumers: an **MCP server** (`mcp/`) and **`ExampleGate`** (NFT-as-access). | ✅ Live |
-| **3. Innovation & Technical Creativity** | Native on-chain inference (not off-chain), a **chained read→reason agent pipeline**, soulbound **identity** (not a tradeable collectible), a fully **on-chain dynamic `tokenURI`**, and **cost-gated evolution** (a cheap on-chain check gates the expensive LLM). | ✅ Live |
-| **4. Autonomous Performance** | The dossier **self-evolves with no human in the loop**: `SoulprintCron` (a Somnia Reactivity `SomniaEventHandler`) fires on a schedule, calls `evolveBatch()`, and **self-reschedules the next tick**. Verifiable on-chain: `ticks` keeps rising and the subscription re-arms with **zero human transactions**. | ✅ Live |
+| **1. Functionality** | Full read → AI → soulbound mint pipeline **deployed and working live** on Shannon testnet, ~6s end to end. **41 Hardhat tests** green. | ✅ Live |
+| **2. Agent-First Design** | The contract **orchestrates two base agents** (JSON API → LLM) in one pipeline. `read(wallet)` + `ProfileRequested` let any agent trigger a run; `profileOf` / `traitsOf` / `evolutionOf` let any contract consume the result. Live consumers: an **MCP server** (`mcp/`) and **`ExampleGate`** (NFT-as-access). | ✅ Live |
+| **3. Innovation & Technical Creativity** | Native on-chain inference (not off-chain), a **chained read→reason agent pipeline**, soulbound **identity** (not a tradeable collectible), a fully **on-chain dynamic `tokenURI`**, **cost-gated evolution** (a cheap on-chain check gates the expensive LLM), and a **30-form Soul Evolution System** (10 stages × 3 archetype lines derived from on-chain activity — Stage + Form as `tokenURI` traits other contracts can index). | ✅ Live |
+| **4. Autonomous Performance** | The dossier **self-evolves with no human in the loop**: `SoulprintCron` (a Somnia Reactivity `SomniaEventHandler`) fires on a schedule, calls `evolveBatch()`, and **self-reschedules the next tick**. Verifiable on-chain: `ticks()` keeps rising and `subscriptionId()` re-arms with **zero human transactions** between ticks. | ✅ Live (35+ autonomous ticks at time of writing) |
 
 ---
 
@@ -123,6 +124,12 @@ response status is handled.
 `TYPE` (invented archetype + tier) · `ARCHETYPE` (one of a fixed set) · `STRENGTH` · `WEAKNESS` ·
 `STYLE` · `KARMA` · `NOTES` · `RARITY`.
 
+**Soul Evolution System** (derived on-chain, not from the LLM): every Soulprint also has a
+`Stage` (1–10, bucketed from `tx_count`) and a `Form` (1–30, looked up from
+archetype × stage) — see [`docs/specs/2026-05-23-soul-evolution-system.md`](docs/specs/2026-05-23-soul-evolution-system.md).
+Both are stored on-chain (`stageOf`, `formIdOf`, `formSlugOf`) and surfaced as `tokenURI` traits so
+agents and marketplaces can read the visual evolution without parsing the dossier text.
+
 ---
 
 ## Contract surface
@@ -134,6 +141,8 @@ response status is handled.
 | `evolveBatch(uint256 count)` | **Permissionless** round-robin re-evaluation of registered wallets — the Cron tick, also a manual fallback. Skips wallets the reserve can't fund (never half-fails). |
 | `profileOf(address) → (tokenId, dossier, generation)` | **Agent-composable** one-call read. |
 | `traitsOf(address) → (tokenId, archetype, activity, generation)` | Machine-readable traits (canonical archetype + 0–100 activity score). |
+| `evolutionOf(address) → (tokenId, stage, formId, formSlug, generation)` | One-call read of the wallet's current Stage (1–10) + Form (1–30) — the on-chain visual evolution state. |
+| `stageOf(tokenId)` / `formIdOf(tokenId)` / `formSlugOf(tokenId)` | Per-token reads of the Soul Evolution System. |
 | `activityScore` / `archetypeOf` | Deterministic on-chain score; canonical archetype parsed from the dossier. |
 | `tokenURI(uint256)` | Fully on-chain, regenerated metadata + `attributes` + dossier per generation. |
 | `locked(uint256) → true` / `_update` revert | ERC-5192 soulbound: profiles can't be transferred. |
@@ -164,13 +173,18 @@ don't burn the reserve on every tick — and the profile is a composable primiti
 ```bash
 # Contracts (repo root)
 npm install
-npx hardhat test                                        # 31 tests, must stay green
+npx hardhat test                                        # 41 tests, must stay green
 npx hardhat run scripts/deploy.ts --network somnia      # deploy (reads PRIVATE_KEY from .env)
 npx hardhat run scripts/smokeTest.ts --network somnia   # live read of a wallet on testnet
 
 # Autonomy (Cron) ops
-npx hardhat run scripts/deployCron.ts --network somnia  # deploy + fund (>32 STT) + start()
-npx hardhat run scripts/watchCron.ts  --network somnia  # watch ticks / generation rise, no human tx
+npx hardhat run scripts/deployCron.ts --network somnia    # deploy + fund (>32 STT) + start()
+npx hardhat run scripts/watchCron.ts  --network somnia    # watch ticks / generation rise, no human tx
+
+# Demo helpers
+DEMO=1 npx hardhat run scripts/setCronParams.ts --network somnia   # 60s ticks (recording mode)
+DEMO=0 npx hardhat run scripts/setCronParams.ts --network somnia   # 1800s ticks (prod, reset after)
+N=50   npx hardhat run scripts/bumpTxCount.ts   --network somnia   # bump burner tx_count → force a real evolution next tick
 
 # MCP server (Agent-First)
 cd mcp && npm install && npm run build && node dist/index.js
