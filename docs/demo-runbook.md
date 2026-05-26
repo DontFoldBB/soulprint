@@ -28,8 +28,8 @@ cd web && npm run build && npm run start
 # leave it running on http://localhost:3000
 
 # 6. Open the explorer tabs you'll cut between (one per browser tab):
-#    - https://shannon-explorer.somnia.network/address/0xbc55dc48cdafb62cc054e1b9424b0429c1750af9   (Soulprint)
-#    - https://shannon-explorer.somnia.network/address/0x3cadf41dcc651366b23cce43086dd646043c4a6b   (SoulprintCron)
+#    - https://shannon-explorer.somnia.network/address/0x6876041cc67f9cd1b11e6e1827b13f3622d256e5   (Soulprint)
+#    - https://shannon-explorer.somnia.network/address/0x0bf4e395ad3746632f86b5254fa18f0db3479d95   (SoulprintCron)
 #    - https://shannon-explorer.somnia.network/address/0x3F86D1A143271A6c772f1CE57a24bAe2241004cC   (burner / cron owner)
 #    Filter SoulprintCron by "Internal Txns" — the autonomous ticks show up there, not as normal tx.
 #    Filter the burner address: confirm there are NO outgoing tx to the cron between ticks (the autonomy proof).
@@ -76,7 +76,23 @@ hit **Read me · 1 STT**, watch the skeleton, watch the card appear.
 
 ---
 
-### 0:50 – 1:30 · COMPOSE — the agent-first surface
+### 0:50 – 1:10 · KEEP IT ALIVE — Prepaid Evolution Fuel + Boost
+
+**ON SCREEN**: hover on the new "FUEL · 1 evo" indicator under the Stage ladder (the green dot
+turns into a tooltip). Then click **★ Boost · 1 STT** below the card; wallet prompts; tx lands;
+the fuel indicator jumps from "1 evo" to "3+ evos".
+
+**NARRATION:**
+> *"Every Soulprint carries its own prepaid evolution fuel. The mint paid for the first
+> autonomous evolution. After that, when the fuel runs out, the soul freezes at its last form —
+> the project doesn't pay forever for any one wallet's identity. But here's the gameplay:
+> anyone can keep any soul alive. I just topped up this one with one STT — that's locked into
+> the soul, the contract owner can't withdraw it. Boost a friend. Boost a founder. Pool-fund the
+> top of the leaderboard. Keeping a soul alive becomes a public good."*
+
+---
+
+### 1:10 – 1:30 · COMPOSE — the agent-first surface
 
 **ON SCREEN**: split-view. Left = a terminal with the MCP server running.
 Right = code snippet of `ExampleGate.sol::enter()`.

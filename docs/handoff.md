@@ -1,4 +1,54 @@
-# Soulprint — Handoff snapshot (2026-05-25)
+# Soulprint — Handoff snapshot (2026-05-26)
+
+## ⟶ UPDATE 2026-05-26 — PREPAID EVOLUTION FUEL SHIPPED + REDEPLOY
+
+**Closed the long-standing economics gap (`docs/economics.md` part 1).** Per-token `evoBalance`
+plus public `topUpEvolution` plus owner-`withdraw` gated on `availableForWithdraw()` — the
+"autonomous tick eats forever" problem is now structurally bounded.
+
+**Contract changes (live in `0x6876…56e5`):**
+- `evoBalance[tokenId]` (per-token STT reserved for future evolutions) + `totalReserved` sum
+- Constants: `EVOLUTION_COST = 0.4 STT`, `INITIAL_FUEL_GRANT = 0.4 STT` (~1 evolution included
+  with mint)
+- New external: `topUpEvolution(uint256 tokenId) payable` — ANYONE can fund any soul's fuel
+- New view: `evolutionFuel(tokenId) → (balance, costPerEvolution, evolutionsRemaining)`
+- New view: `availableForWithdraw()` — caps `withdraw` so owner never dips into `totalReserved`
+- New event: `EvolutionPaused(tokenId, balance)` (out of fuel)
+- New event: `ToppedUp(tokenId, by, amount, newBalance)`
+- `handleStats` now fuel-gates the re-evolution branch (after the tx_count cost-gate)
+- `evolveBatch` pre-filters out-of-fuel souls — saves the JSON poll on frozen souls
+- **+6 tests, 47/47 green** (was 41)
+
+**Frontend wiring:**
+- `web/lib/profile.ts` reads `evolutionFuel` → adds `fuelEvosLeft` to `WalletProfile`
+- `web/components/SoulCard.tsx` + `.css` — minimal "FUEL · N evos" indicator under the Stage
+  ladder; turns ember-red on empty
+- `web/components/BoostButton.tsx` — new; calls `topUpEvolution` with 1 STT default; wired into
+  `app/page.tsx` (next to ☆ Watch), `app/dashboard/page.tsx` (under your-soulprint card), and
+  `CardModal.tsx` (between the card and EvolutionTimeline)
+- `web/lib/soulprint.ts` ABI extended with `evolutionFuel`, `topUpEvolution`, `EVOLUTION_COST`
+- web build green
+
+**REDEPLOYED 2026-05-26 (latest live pair):**
+- **Soulprint:** `0x6876041cc67f9cd1b11e6e1827b13f3622d256e5` (12 STT seeded, includes the fuel
+  system + the entire Soul Evolution System + audit hardening). Smoke-tested: read(burner)
+  minted "The Ghost / Testnet Explorer" in ~6s; `evolutionFuel(1)` reports
+  `(0.4, 0.4, 1)` ✓; `totalReserved=0.4` ✓; `availableForWithdraw=11.26` ✓.
+- **SoulprintCron:** `0x0bf4e395ad3746632f86b5254fa18f0db3479d95` (40 STT, `subscriptionId` 2267508
+  armed, 30-min interval, batch 5, `ticks=0`).
+- Old `0xbc55…463ab` Soulprint + `0x3cad…4a6b` Cron retired via `scripts/retireOld.ts` (~47.7 STT
+  recovered). Old cron reached 35 ticks → 2 real evolutions → criterion #4 was proven live on
+  that deploy too; event history stays on-chain.
+- All 15 address references repointed (`web/lib`, `mcp/src`, `scripts/*`, README, CLAUDE,
+  this doc, runbook).
+
+**Demo angle for the video:**
+- The Boost button is the new "wow" moment between the Mint and Autonomy sections of the runbook
+  — see `docs/demo-runbook.md` (0:50–1:10).
+- "Anyone can keep any soul alive" is a strong virality / public-good narrative beat that maps
+  cleanly to criteria #2 (Agent-First — anyone, including bots/contracts, can `topUpEvolution`)
+  and #3 (Innovation — bounded-cost-by-design + boost mechanic).
+
 
 > Read this first when resuming in a fresh session. It captures current state, what's on GitHub,
 > and what's left. Pairs with `CLAUDE.md` (project context), `docs/reference/somnia-agents-guide.md`

@@ -7,7 +7,7 @@ import { parseEther, formatEther } from "viem";
 // Re-run this when the reserve gets low. Unused STT is recoverable via Soulprint.withdraw().
 //
 // Amount defaults to 10 STT; override with FUND_STT (e.g. FUND_STT=5).
-const SOULPRINT = "0xbc55dc48cdafb62cc054e1b9424b0429c1750af9";
+const SOULPRINT = "0x6876041cc67f9cd1b11e6e1827b13f3622d256e5";
 const AMOUNT = parseEther(process.env.FUND_STT ?? "10");
 
 async function main() {

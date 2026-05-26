@@ -8,7 +8,7 @@ import hre from "hardhat";
 //   DEMO=0 npx hardhat run scripts/setCronParams.ts --network somnia   # 1800s, batch 5 (prod)
 //
 // Override individually with INTERVAL=<sec> BATCH=<n>.
-const CRON = "0x3cadf41dcc651366b23cce43086dd646043c4a6b";
+const CRON = "0x0bf4e395ad3746632f86b5254fa18f0db3479d95";
 
 async function main() {
   const demo = process.env.DEMO === "1";

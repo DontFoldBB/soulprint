@@ -1,7 +1,7 @@
 import hre from "hardhat";
 
 const PRECOMPILE = "0x0000000000000000000000000000000000000100";
-const CRON = "0x3cadf41dcc651366b23cce43086dd646043c4a6b"; // LIVE cron (criterion #4)
+const CRON = "0x0bf4e395ad3746632f86b5254fa18f0db3479d95"; // LIVE cron (criterion #4)
 
 async function main() {
   const pub = await hre.viem.getPublicClient();

@@ -52,10 +52,10 @@ the answer (gating, scoring, reputation, matchmaking). The included `ExampleGate
 
 | Criterion | What Soulprint does | Status |
 |---|---|---|
-| **1. Functionality** | Full read → AI → soulbound mint pipeline **deployed and working live** on Shannon testnet, ~6s end to end. **41 Hardhat tests** green. | ✅ Live |
-| **2. Agent-First Design** | The contract **orchestrates two base agents** (JSON API → LLM) in one pipeline. `read(wallet)` + `ProfileRequested` let any agent trigger a run; `profileOf` / `traitsOf` / `evolutionOf` let any contract consume the result. Live consumers: an **MCP server** (`mcp/`) and **`ExampleGate`** (NFT-as-access). | ✅ Live |
-| **3. Innovation & Technical Creativity** | Native on-chain inference (not off-chain), a **chained read→reason agent pipeline**, soulbound **identity** (not a tradeable collectible), a fully **on-chain dynamic `tokenURI`**, **cost-gated evolution** (a cheap on-chain check gates the expensive LLM), and a **30-form Soul Evolution System** (10 stages × 3 archetype lines derived from on-chain activity — Stage + Form as `tokenURI` traits other contracts can index). | ✅ Live |
-| **4. Autonomous Performance** | The dossier **self-evolves with no human in the loop**: `SoulprintCron` (a Somnia Reactivity `SomniaEventHandler`) fires on a schedule, calls `evolveBatch()`, and **self-reschedules the next tick**. Verifiable on-chain: `ticks()` keeps rising and `subscriptionId()` re-arms with **zero human transactions** between ticks. | ✅ Live (35+ autonomous ticks at time of writing) |
+| **1. Functionality** | Full read → AI → soulbound mint pipeline **deployed and working live** on Shannon testnet, ~6s end to end. **47 Hardhat tests** green. | ✅ Live |
+| **2. Agent-First Design** | The contract **orchestrates two base agents** (JSON API → LLM) in one pipeline. `read(wallet)` + `ProfileRequested` let any agent trigger a run; `profileOf` / `traitsOf` / `evolutionOf` / `evolutionFuel` let any contract consume the result. Live consumers: an **MCP server** (`mcp/`) and **`ExampleGate`** (NFT-as-access). | ✅ Live |
+| **3. Innovation & Technical Creativity** | Native on-chain inference (not off-chain), a **chained read→reason agent pipeline**, soulbound **identity** (not a tradeable collectible), a fully **on-chain dynamic `tokenURI`**, **cost-gated evolution** (cheap on-chain check gates the expensive LLM), a **30-form Soul Evolution System** (10 stages × 3 archetype lines — Stage + Form as `tokenURI` traits), and **Prepaid Evolution Fuel** (per-token `evoBalance`, public `topUpEvolution` — bounds the project's forever-cost and makes "keep this soul alive" a public good anyone can fund). | ✅ Live |
+| **4. Autonomous Performance** | The dossier **self-evolves with no human in the loop**: `SoulprintCron` (a Somnia Reactivity `SomniaEventHandler`) fires on a schedule, calls `evolveBatch()`, and **self-reschedules the next tick**. Verifiable on-chain: `ticks()` keeps rising and `subscriptionId()` re-arms with **zero human transactions** between ticks. The previous live cron (`0x3cad…`) reached **35 autonomous ticks → 2 real evolutions on the soul that bumped tx_count**, all other ticks correctly cost-gated. | ✅ Live (35-tick history on prior cron; fresh cron armed) |
 
 ---
 
@@ -63,8 +63,8 @@ the answer (gating, scoring, reputation, matchmaking). The included `ExampleGate
 
 | | |
 |---|---|
-| **Soulprint** (core) | [`0xbc55dc48cdafb62cc054e1b9424b0429c1750af9`](https://shannon-explorer.somnia.network/address/0xbc55dc48cdafb62cc054e1b9424b0429c1750af9) |
-| **SoulprintCron** (autonomy) | [`0x3cadf41dcc651366b23cce43086dd646043c4a6b`](https://shannon-explorer.somnia.network/address/0x3cadf41dcc651366b23cce43086dd646043c4a6b) |
+| **Soulprint** (core) | [`0x6876041cc67f9cd1b11e6e1827b13f3622d256e5`](https://shannon-explorer.somnia.network/address/0x6876041cc67f9cd1b11e6e1827b13f3622d256e5) |
+| **SoulprintCron** (autonomy) | [`0x0bf4e395ad3746632f86b5254fa18f0db3479d95`](https://shannon-explorer.somnia.network/address/0x0bf4e395ad3746632f86b5254fa18f0db3479d95) |
 | Somnia Agents platform | `0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776` |
 | Agents used | JSON API Request (`13174…`) + LLM Inference / Qwen3-30B (`12847…`) |
 
@@ -143,6 +143,9 @@ agents and marketplaces can read the visual evolution without parsing the dossie
 | `traitsOf(address) → (tokenId, archetype, activity, generation)` | Machine-readable traits (canonical archetype + 0–100 activity score). |
 | `evolutionOf(address) → (tokenId, stage, formId, formSlug, generation)` | One-call read of the wallet's current Stage (1–10) + Form (1–30) — the on-chain visual evolution state. |
 | `stageOf(tokenId)` / `formIdOf(tokenId)` / `formSlugOf(tokenId)` | Per-token reads of the Soul Evolution System. |
+| `evolutionFuel(tokenId) → (balance, costPerEvolution, evolutionsRemaining)` | Prepaid fuel state: how much STT is left for this soul, the per-evolution cost, and how many full evolutions that funds. |
+| `topUpEvolution(uint256 tokenId) payable` | **Anyone** can top up any soul's prepaid evolution fuel — keeping a soul alive is a public good. STT is locked into the per-token balance and never withdrawable by the contract owner. |
+| `availableForWithdraw()` | What the owner is actually allowed to withdraw — everything in the contract balance EXCEPT `totalReserved` (the sum of all per-token fuel). |
 | `activityScore` / `archetypeOf` | Deterministic on-chain score; canonical archetype parsed from the dossier. |
 | `tokenURI(uint256)` | Fully on-chain, regenerated metadata + `attributes` + dossier per generation. |
 | `locked(uint256) → true` / `_update` revert | ERC-5192 soulbound: profiles can't be transferred. |
@@ -162,9 +165,22 @@ a wallet's live profile (read-only, no key). Concrete proof of Agent-First consu
 
 ## Cost-aware by design
 
-A cheap on-chain check (`tx_count` vs the stored value) gates the expensive LLM, so idle wallets
-don't burn the reserve on every tick — and the profile is a composable primitive others *read* (via
-`profileOf` / `traitsOf` / the MCP server), not a bottomless subsidy. See [`docs/economics.md`](docs/economics.md).
+Two on-chain mechanisms bound the project's "forever-cost" from the autonomous tick:
+
+1. **Cost-gated evolution.** A cheap on-chain check (`tx_count` vs the stored value) gates the
+   expensive LLM, so idle wallets don't burn the reserve on every tick (cron emits `EvolutionSkipped`).
+2. **Prepaid Evolution Fuel.** Each Soulprint carries its own `evoBalance` (in STT). The mint
+   includes `INITIAL_FUEL_GRANT` (≈1 evolution) and every successful re-evolution deducts
+   `EVOLUTION_COST` from THAT soul's balance — not from a shared kitty. When fuel runs out the
+   cron emits `EvolutionPaused(tokenId, balance)` and the soul freezes at its last form.
+
+**Anyone can revive a paused soul** via `topUpEvolution(tokenId) payable`. That STT is locked into
+the per-token balance and the contract owner can never withdraw it (`withdraw` is gated by
+`availableForWithdraw()`). Keeping a soul alive becomes a public good — boost a friend's, boost a
+founder's, pool-fund the most active wallet on the leaderboard.
+
+See [`docs/economics.md`](docs/economics.md) for the full thinking and the post-hackathon roadmap
+(consumers-pay-to-read for the reputation primitive itself).
 
 ---
 
@@ -173,7 +189,7 @@ don't burn the reserve on every tick — and the profile is a composable primiti
 ```bash
 # Contracts (repo root)
 npm install
-npx hardhat test                                        # 41 tests, must stay green
+npx hardhat test                                        # 47 tests, must stay green
 npx hardhat run scripts/deploy.ts --network somnia      # deploy (reads PRIVATE_KEY from .env)
 npx hardhat run scripts/smokeTest.ts --network somnia   # live read of a wallet on testnet
 
