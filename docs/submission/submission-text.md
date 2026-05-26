@@ -107,8 +107,11 @@ https://github.com/DontFoldBB/soulprint
 ```
 
 ## 4. Link to Presentation
-> Upload `docs/submission/soulprint-deck.pdf` to Google Slides / DocSend / Canva, paste the share link here.
-> (If the form accepts a direct file: it's already in this folder.)
+```
+https://soulprint-psi.vercel.app/soulprint-deck.pdf
+```
+(Hosted on the same Vercel project as the live frontend — opens inline in any browser.
+GitHub raw fallback: `https://github.com/DontFoldBB/soulprint/raw/master/docs/submission/soulprint-deck.pdf`.)
 
 ## 5. Link to Demo Video
 > YouTube unlisted link goes here AFTER you record per `docs/demo-recording-script.md`.
