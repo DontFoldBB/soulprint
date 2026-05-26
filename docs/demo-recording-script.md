@@ -1,249 +1,271 @@
 # Soulprint — Demo Video Recording Script
 
-> **Read this top-to-bottom once before pressing record.** This is the OPERATIONAL shooting
-> script: every shot has a target hold-time and a matching narration line. You record video
-> SILENT, then generate the narration through any TTS, then overlay. Because both halves
-> follow the same timing table, the sync will be near-automatic.
+> **Final shooting script for the Encode submission video.** Read top-to-bottom once.
+> One continuous take, target **2:30**. You record SILENT video, then generate the
+> narration via TTS, then overlay. Each "moment" below has its own narration line; the
+> word counts add up to ~150 wpm so audio sync is near-automatic.
 >
-> Pair with `docs/demo-runbook.md` (strategic overview + judging-criteria mapping).
+> Pair: [`docs/demo-runbook.md`](demo-runbook.md) (strategic overview, fallback plans).
 
 ---
 
-## A. Setup (10 minutes, one-time before pressing record)
+## 1. Pre-flight (10 minutes, once)
 
-### A.1 OBS Studio (free, obsproject.com)
-1. **Settings → Video → Base + Output resolution:** `1920×1080`. **FPS:** `30`.
-2. **Settings → Output → Recording:** `MP4` container, `H.264` encoder, quality `Indistinguishable`.
-3. **Settings → Audio → Mic/Aux:** DISABLED. (Audio comes from TTS later.)
-4. **Sources:** add one `Display Capture` source covering your full primary screen.
-5. **Optional:** enable a cursor highlighter (built-in or via the free *Mouseposé* / *Cursor Highlighter* OBS plugin) so judges can follow what you point at.
-6. Test-record 5 seconds, stop, scrub to check it looks crisp at 1080p.
+### A. OBS Studio
+- Settings → Video: `1920×1080`, `30 FPS`
+- Settings → Output → Recording: MP4, H.264, "Indistinguishable"
+- Settings → Audio → Mic/Aux: **DISABLED** (TTS later)
+- One `Display Capture` source covering your primary screen
+- Test-record 5 seconds, stop, scrub to verify
 
-### A.2 Browser (Chrome, fullscreen `F11`, zoom 100%)
-Pre-open these tabs **in this exact order** (left to right):
-1. `http://localhost:3000` — Soulprint mint page (dev server running)
-2. `http://localhost:3000/dashboard` — dashboard
-3. `https://shannon-explorer.somnia.network/address/0x6876041cc67f9cd1b11e6e1827b13f3622d256e5` — Soulprint contract page
-4. `https://shannon-explorer.somnia.network/address/0x0bf4e395ad3746632f86b5254fa18f0db3479d95` — SoulprintCron page → click **Internal Txns** filter
-5. `https://shannon-explorer.somnia.network/address/0x3F86D1A143271A6c772f1CE57a24bAe2241004cC` — burner (= cron owner) address page
+### B. Browser (Chrome, F11 fullscreen, zoom 100%)
+Pre-open these tabs **in this exact order**:
+1. <https://soulprint-psi.vercel.app> — Mint
+2. <https://soulprint-psi.vercel.app/dashboard> — Dashboard
+3. <https://shannon-explorer.somnia.network/address/0x0bf4e395ad3746632f86b5254fa18f0db3479d95> — SoulprintCron → click **Internal Txns** filter
+4. <https://shannon-explorer.somnia.network/address/0x3F86D1A143271A6c772f1CE57a24bAe2241004cC> — burner / cron owner address
 
-### A.3 Terminal
-One terminal window, font size ≥ 16pt, dark theme, in `F:\pet_projects\somnia_hackaton\`. Keep it ready for the MCP / `watchCron` shots — switch to it with `Alt-Tab`.
-
-### A.4 Wallet (MetaMask)
-- Somnia Shannon testnet added (`chainId 50312`, RPC `https://api.infra.testnet.somnia.network`).
-- Connected to your everyday wallet (NOT the burner), with **≥ 2 STT** (1 STT for the Boost shot + gas).
-- MetaMask **unlocked** before you press record.
-
-### A.5 Pre-recording chain staging
-Run these from `F:\pet_projects\somnia_hackaton\` before pressing record:
+### C. Terminal
+One terminal window in `F:\pet_projects\somnia_hackaton\`, font ≥16pt, dark theme.
+Pre-type this command (don't run it yet):
 
 ```powershell
-# 1. Speed cron up to 60s so we see a tick on camera
-DEMO=1 npx hardhat run scripts/setCronParams.ts --network somnia
-
-# 2. Bump burner tx_count so the NEXT cron tick crosses Stage 3 → Stage 4 (forces a real
-#    evolution mid-recording — generation bumps AND form changes visibly).
-N=30 npx hardhat run scripts/bumpTxCount.ts --network somnia
-
-# 3. Confirm the live state right before you record
 npx hardhat run scripts/watchCron.ts --network somnia
-# Expect: gen 1, txCount ~75+, cron ticks rising, subId armed.
 ```
 
-### A.6 After you're done recording (do not forget)
+### D. MetaMask
+- Connected to **Somnia Shannon testnet** (chainId 50312, RPC `https://api.infra.testnet.somnia.network`)
+- Connected to **your everyday wallet** (NOT the burner). At least **2 STT** balance.
+- MetaMask is **unlocked** before you press record.
+
+### E. Tell me you're 5 minutes from recording
+I'll run these from my side in parallel — gives you fresh autonomy state during the take:
+
 ```powershell
-DEMO=0 npx hardhat run scripts/setCronParams.ts --network somnia   # back to 1800s prod cadence
+DEMO=1 npx hardhat run scripts/setCronParams.ts --network somnia    # 60s ticks
+N=30   npx hardhat run scripts/bumpTxCount.ts   --network somnia    # bump burner past Stage 4 threshold
+```
+
+### F. After you're done recording
+```powershell
+DEMO=0 npx hardhat run scripts/setCronParams.ts --network somnia    # back to 30-min prod cadence
 ```
 
 ---
 
-## B. Locked Narration Script (450 words, ~3:00 @ 150 wpm)
+## 2. The shot list (one take, ~2:30)
 
-> **This is the canonical text to paste into TTS.** Don't modify the wording without re-syncing
-> the shot table. Punctuation is intentional — periods become pauses in TTS output.
-
-```
-[0:00 cold open]
-Every wallet on chain has a story. Soulprint reads that story end-to-end with on-chain
-AI agents on Somnia, and mints it as a living, soulbound NFT that keeps evolving on its own.
-
-[0:10 mint]
-Watch a mint. You paste any wallet, click Read. A Somnia JSON API agent fetches the wallet's
-history. The on-chain LLM, Qwen-3 30B, running across validators, writes a witty, structured
-dossier. It's minted as a soulbound NFT — ERC-5192. It can't be sold, can't be transferred.
-End to end, about six seconds.
-
-[0:35 evolution system]
-Every Soulprint isn't just text. The wallet has a Stage from 1 to 10, derived from on-chain
-activity. Each archetype line — Explorer, DeFi, Power-User, and four more — has its own
-visual evolution. Thirty spirit forms in total. Stage and Form are stored on-chain.
-Indexable by any contract.
-
-[0:58 fuel + boost]
-Here's the part most "AI on-chain" projects skip — sustainability. Every Soulprint carries
-its own prepaid evolution fuel. The mint paid for the first autonomous evolution. When the
-fuel runs out, the soul freezes at its last form — the project does not pay forever for any
-one wallet. But anyone can keep any soul alive. I just topped this one up. The STT locks
-into the soul. The contract owner can never withdraw it. Boost a friend. Boost a stranger.
-Keeping a soul alive becomes a public good.
-
-[1:33 composability]
-And it's not an end-product NFT — it's a primitive. Any contract or agent can read a wallet's
-Soulprint in one call. Here's the Model Context Protocol server exposing it to any AI agent
-over a standard protocol. Here's a gate contract — access by Soulprint activity score.
-Reputation you can't buy, can't transfer, can't fake.
-
-[1:55 autonomy]
-And the autonomy. SoulprintCron is a Somnia Reactivity handler. It runs on a schedule, calls
-evolveBatch, and reschedules itself, inside the same handler. Look at the cron's internal
-transactions. The sender is the Somnia precompile — address zero-one-hundred. Now look at
-the contract owner's address. Zero outgoing transactions to the cron. It's the validator
-network firing the contract on time, forever. No keeper bot. No webhook. The previous live
-cron reached thirty-five autonomous ticks. Same code, fresh deploy, ticking now.
-
-[2:35 visual transformation]
-And here's what that looks like for the user. Same wallet, activity changed, cron tick fired,
-the AI rewrote the dossier, the soul evolved. Pathfinder Shade to Cartographer Spirit.
-Stage 3 to Stage 4. No human pressed a button.
-
-[2:52 close]
-Soulprint. Forty-seven tests green. Live on Somnia testnet. Soulbound. Self-evolving.
-Cost-bounded. Composable. Mint once. It evolves forever.
-```
-
-Word count: 451. At 150 wpm = 180 seconds. Leave ~2 seconds of dead audio at start and end
-for breathing room.
-
----
-
-## C. Shot List (one continuous take, ~3:00)
-
-> **How to use:** record one long take. Watch the `[X:XX]` time on your stopwatch as you go.
-> If you fluff a shot, **pause 3 seconds and redo from the last clean shot** — easy cut in
-> editing. Don't restart from zero unless something truly broke.
+> Each block: **what's on screen** → **what you do** → **how long to hold** → **the
+> narration line that plays over this moment** (TTS reads this; you don't speak).
 >
-> "HOLD" = how long this shot should stay on screen. "MOUSE" = where to point (no need to
-> click unless marked). Anything with 🟠 needs a wallet popup confirm.
-
-| Time | What's on screen | Your action | Hold | Sync to narration |
-|---|---|---|---:|---|
-| **A. Cold open** | | | | |
-| 0:00 | Tab 1 — Soulprint mint page, top of viewport | Just sit still. Cursor parked. | 4s | *"Every wallet on chain has a story…"* |
-| 0:04 | Same | Slow scroll down to reveal the LIVE ACTIVITY feed below the mint form | 4s | *"…and mints it as a living, soulbound NFT that keeps evolving on its own."* |
-| 0:08 | Mint form visible at top | Scroll back up to mint form | 2s | (silence between sentences) |
-| **B. Mint** | | | | |
-| 0:10 | Mint form, focus on the address input | Click the input. Type `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC` (burner). | 4s | *"Watch a mint. You paste any wallet…"* |
-| 0:14 | Mint form, address filled | Hover over "Read me · 1 STT" button | 3s | *"…click Read."* |
-| 0:17 | Skeleton card appears (the dev server already has this soul, so the lookup returns instantly — that's OK, narrate as if it's the mint flow) | Let the card render. Don't move. | 6s | *"A Somnia JSON API agent fetches the wallet's history. The on-chain LLM, Qwen-3 30B…"* |
-| 0:23 | Full SoulCard rendered | Cursor hovers over the spirit image (the PNG) | 4s | *"…writes a witty, structured dossier. It's minted as a soulbound NFT — ERC-5192."* |
-| 0:27 | Same card | Hover over "soulbound" footer text | 3s | *"It can't be sold, can't be transferred."* |
-| 0:30 | Same card | Slow upward mouse drift toward the card title | 5s | *"End to end, about six seconds."* |
-| **C. Evolution system** | | | | |
-| 0:35 | SoulCard, headline visible | Hover on the headline ("Scout" / form name) | 4s | *"Every Soulprint isn't just text. The wallet has a Stage from 1 to 10…"* |
-| 0:39 | Same | Move cursor down to the 10-dot Stage ladder | 6s | *"…derived from on-chain activity. Each archetype line — Explorer, DeFi, Power-User, and four more — has its own visual evolution."* |
-| 0:45 | Same | Hold on the spirit PNG | 4s | *"Thirty spirit forms in total."* |
-| 0:49 | Same | Slow drift to the "Activity / Txns / Gen" stats row | 9s | *"Stage and Form are stored on-chain. Indexable by any contract."* |
-| **D. Fuel + Boost** 🟠 | | | | |
-| 0:58 | Same card | Hover over the green "FUEL · 1 evo" indicator below the Stage ladder | 5s | *"Here's the part most 'AI on-chain' projects skip — sustainability."* |
-| 1:03 | Tooltip showing fuel detail | Keep hovering, let tooltip read | 5s | *"Every Soulprint carries its own prepaid evolution fuel. The mint paid for the first autonomous evolution."* |
-| 1:08 | Card | Move cursor to the "★ Boost · 1 STT" button below the card | 4s | *"When the fuel runs out, the soul freezes at its last form — the project does not pay forever for any one wallet."* |
-| 1:12 | Card | **Click ★ Boost** | — | *"But anyone can keep any soul alive."* |
-| 1:13 | 🟠 MetaMask popup appears | Click **Confirm** in MetaMask | up to 8s | (narration continues over the popup — that's fine, judges expect it) |
-| ~1:20 | Popup closes, button shows "Boost sent…" then "Boosted ✓" | Wait for the success state | 5s | *"I just topped this one up. The STT locks into the soul. The contract owner can never withdraw it."* |
-| 1:25 | Card refresh — fuel indicator now shows "fuel · 3 evos" (or higher) | Hover over the new fuel value | 8s | *"Boost a friend. Boost a stranger. Keeping a soul alive becomes a public good."* |
-| **E. Composability** | | | | |
-| 1:33 | Switch to Terminal (Alt-Tab) — `node mcp/dist/index.js` already running | Show the MCP server stdout | 4s | *"And it's not an end-product NFT — it's a primitive."* |
-| 1:37 | Terminal | Run: `npx hardhat console --network somnia` then paste:<br>`(await ethers.getContractAt("Soulprint","0x6876041cc67f9cd1b11e6e1827b13f3622d256e5")).traitsOf("0x3F86D1A143271A6c772f1CE57a24bAe2241004cC")`<br>**Or simpler:** just show a pre-typed line waiting, press Enter to execute. | 7s | *"Any contract or agent can read a wallet's Soulprint in one call."* |
-| 1:44 | Terminal output | Let it print, scroll to fit | 5s | *"Here's the Model Context Protocol server exposing it to any AI agent over a standard protocol."* |
-| 1:49 | Open `contracts/ExampleGate.sol` in the editor (have it pre-opened) | Show the `enter()` function | 6s | *"Here's a gate contract — access by Soulprint activity score. Reputation you can't buy, can't transfer, can't fake."* |
-| **F. Autonomy proof** | | | | |
-| 1:55 | Tab 4 — Explorer SoulprintCron page, Internal Txns filter | Switch tabs | 3s | *"And the autonomy."* |
-| 1:58 | Same | Slow scroll to show multiple `Ticked` events | 6s | *"SoulprintCron is a Somnia Reactivity handler. It runs on a schedule…"* |
-| 2:04 | Hover on one `From` column with the precompile address | Highlight `0x…0100` | 5s | *"…calls evolveBatch, and reschedules itself, inside the same handler. Look at the cron's internal transactions. The sender is the Somnia precompile…"* |
-| 2:09 | Same | Hover on `0x…0100` text | 4s | *"…address zero-one-hundred."* |
-| 2:13 | Tab 5 — burner / cron-owner address page | Switch tabs | 3s | *"Now look at the contract owner's address."* |
-| 2:16 | Burner page | Filter on outgoing transactions (or just scroll). The point: no tx going INTO the cron from the owner. | 8s | *"Zero outgoing transactions to the cron. It's the validator network firing the contract on time, forever. No keeper bot. No webhook."* |
-| 2:24 | Tab 4 again — cron Internal Txns | Switch back | 5s | *"The previous live cron reached thirty-five autonomous ticks."* |
-| 2:29 | Same | Hover on `ticks` counter or just hold steady | 6s | *"Same code, fresh deploy, ticking now."* |
-| **G. Visual transformation** | | | | |
-| 2:35 | Tab 2 — Dashboard | Switch tabs, **hard-refresh** (`Ctrl-F5`) | 5s | *"And here's what that looks like for the user."* |
-| 2:40 | Dashboard — your Soulprint card | Cursor on the spirit PNG (NOW it should show the NEW form because cron tick re-evolved it post tx_count bump — if pre-staging worked, the form will be `explorer-3-cartographer-spirit`, not pathfinder) | 7s | *"Same wallet, activity changed, cron tick fired, the AI rewrote the dossier, the soul evolved."* |
-| 2:47 | Same | Hover on the headline ("Cartographer") | 3s | *"Pathfinder Shade to Cartographer Spirit. Stage 3 to Stage 4."* |
-| 2:50 | Same | Hover on the Stage ladder | 2s | *"No human pressed a button."* |
-| **H. Close** | | | | |
-| 2:52 | Open `README.md` in editor — scroll to the "How we map to the judging criteria" table | Show full table | 6s | *"Soulprint. Forty-seven tests green. Live on Somnia testnet."* |
-| 2:58 | Scroll to the live-deployment table (right below) | Show contract addresses | 2s | *"Soulbound. Self-evolving. Cost-bounded. Composable."* |
-| 3:00 | Hold on the addresses block | Stop moving | 3s | *"Mint once. It evolves forever."* |
-| 3:03 | Hold for ~2s dead | Stop recording | — | (silence) |
-
-**Total target length: 3:05** (180s narration + 2s start + 3s end-hold).
+> If you fluff a shot, pause 3 seconds and redo from the last clean moment. Easy cut in editing.
 
 ---
 
-## D. Recording tips
-
-- **Cursor:** move deliberately. Aim for 1 second of travel between hover points, not 0.3s. Judges follow what you point at.
-- **Typing:** when you type the wallet address, slow down — 60ms per key is fine. Or just paste it, narration covers the speed.
-- **MetaMask shot (1:13):** keep recording through the popup. The narration is timed to cover the wait. If it takes longer than 8s to confirm, the narration just hangs slightly behind — fix in mixing by holding the post-confirm shot a beat longer.
-- **One take is fine.** A 5-second pause + redo from the last clean shot is invisible after trimming.
-- **Don't blow up the audio.** Mic is OFF — anything you say into the room won't be recorded. You can narrate to yourself for pacing.
+### [0:00 – 0:08]   COLD OPEN
+**Screen:** Tab 1 — `soulprint-psi.vercel.app` home page, top of viewport.
+**Do:** Sit still. Cursor parked. Hold 4 sec. Then slow-scroll down to reveal the "LIVE ACTIVITY" feed, hold 4 sec.
+**Narration:**
+> *Soulprint. A living AI dossier for your wallet. Built on Somnia, with on-chain AI agents that read a wallet's history and write a witty dossier — minted as a soulbound NFT.*
 
 ---
 
-## E. Generate the TTS audio
+### [0:08 – 0:14]   PASTE & READ
+**Screen:** Scrolled back to the mint form at the top.
+**Do:** Click the address input. Paste the burner address: `0x3F86D1A143271A6c772f1CE57a24bAe2241004cC`. Hover on the **Read me · 1 STT** button. Don't click yet.
+**Narration:**
+> *Watch a mint. Paste any wallet — yours, or someone else's — and click Read.*
 
-Best free / cheap options for English voiceover:
+---
 
-| Tool | Cost | Voice to use | Notes |
+### [0:14 – 0:24]   AGENT PIPELINE FIRES
+**Screen:** Mint form.
+**Do:** Click **Read me · 1 STT**. MetaMask popup appears → click **Confirm**. Hold while the skeleton renders (~6–8 sec).
+**Narration:**
+> *A Somnia JSON API agent fetches the wallet's on-chain activity. The on-chain LLM — Qwen-3 30B, running across validators with consensus-verified output — writes the dossier. End to end, about six seconds.*
+
+---
+
+### [0:24 – 0:34]   THE CARD
+**Screen:** Full SoulCard rendered.
+**Do:** Slow cursor sweep across the card. Hover on the spirit PNG (3 sec). Hover on the 10-dot Stage ladder (3 sec). Hover on the "soulbound" footer (3 sec).
+**Narration:**
+> *It mints as a soulbound NFT. ERC-5192 — can't be sold, can't be transferred. Every wallet has a Stage from one to ten and one of thirty spirit forms, derived from real on-chain activity and stored on-chain.*
+
+---
+
+### [0:34 – 0:42]   THE FUEL
+**Screen:** Same card.
+**Do:** Hover on the green "**FUEL · 1 evo**" indicator below the Stage ladder. Let the tooltip read.
+**Narration:**
+> *Here's the part most "AI on-chain" projects skip — sustainability. Every Soulprint carries its own prepaid evolution fuel. The mint paid for one autonomous evolution. After that, the soul freezes — until someone tops it up.*
+
+---
+
+### [0:42 – 1:00]   BOOST   🟠 *(MetaMask popup)*
+**Screen:** Same card.
+**Do:** Click **★ Boost · 1 STT** below the card. MetaMask popup → click **Confirm**. Hold ~10 sec while it lands. Button cycles "Boost sent…" → "Boosted ✓". Card fuel indicator jumps from "1 evo" to "3 evos" or higher.
+**Narration:**
+> *And anyone can keep any soul alive. I top this one up with one STT. The fuel locks into the soul — the contract owner can never withdraw it. Boost a friend. Boost a stranger. Keeping a soul alive becomes a public good.*
+
+---
+
+### [1:00 – 1:10]   DASHBOARD
+**Screen:** Switch to Tab 2 — `/dashboard`.
+**Do:** Hard-refresh (`Ctrl-F5`). Show System Overview stats. Slow-scroll down to the Leaderboard.
+**Narration:**
+> *The dashboard shows the whole ecosystem. Soulprints minted, autonomous evolutions counted, leaderboard ranked by on-chain activity.*
+
+---
+
+### [1:10 – 1:35]   AUTONOMY — TERMINAL
+**Screen:** Alt-Tab to the terminal.
+**Do:** Press **Enter** to run `npx hardhat run scripts/watchCron.ts --network somnia`. Output starts streaming — ticks, generation, subscription id. Hold ~20 sec. **If a live tick lands** mid-shot (since cron is at 60s), let it print prominently.
+**Narration:**
+> *Now — the autonomy proof. SoulprintCron is a Somnia Reactivity handler. On each scheduled tick, the handler calls evolveBatch and then schedules the next tick — inside the same handler. The chain ticks the contract on time, forever. No keeper bot. No webhook.*
+
+---
+
+### [1:35 – 1:50]   AUTONOMY — EXPLORER
+**Screen:** Switch to Tab 3 — cron explorer page, **Internal Txns** filter visible.
+**Do:** Slow scroll showing multiple `Ticked` events. Hover on the **From** column of the latest tick — the address starts with `0x000...0100`.
+**Narration:**
+> *Every tick comes from the Somnia Reactivity precompile — address zero-zero-zero-zero-zero-zero-one-hundred. Not from a human wallet. The previous live cron reached thirty-five ticks. Two real evolutions. Zero human transactions between them.*
+
+---
+
+### [1:50 – 2:00]   THE OWNER'S ADDRESS
+**Screen:** Switch to Tab 4 — burner / cron-owner address page.
+**Do:** Show the outgoing transactions list. There are NO outgoing tx to the cron address.
+**Narration:**
+> *And here is the contract owner's address. Look at the outgoing transactions. Zero of them go to the cron. The autonomy is real — verifiable on the explorer.*
+
+---
+
+### [2:00 – 2:15]   COMPOSABILITY
+**Screen:** Switch to Tab 2 — dashboard. Click a leaderboard entry — the wallet's modal opens with its SoulCard.
+**Do:** Hover on the card — show its spirit form, fuel indicator, address. Hold ~10 sec.
+**Narration:**
+> *And Soulprint is not just an NFT — it's a primitive other contracts read. profileOf, traitsOf, evolutionOf, evolutionFuel. An MCP server exposes it to any AI agent. A gate contract grants access by activity score. Reputation that can't be bought, transferred, or faked.*
+
+---
+
+### [2:15 – 2:30]   CLOSE
+**Screen:** Close the modal. Hard-refresh dashboard. Hold on the full dashboard view (System Overview + Your Soulprint + Leaderboard all visible).
+**Do:** Sit still. Cursor parked.
+**Narration:**
+> *Soulprint. Forty-seven tests green. Live on Somnia. Cost-bounded by design. Soulbound. Self-evolving. Mint once — it evolves forever.*
+
+---
+
+### [2:30]   STOP RECORDING
+Hold the final frame for 2 more seconds, then stop OBS.
+
+---
+
+## 3. Locked narration (paste into TTS)
+
+> **The canonical text — copy verbatim into ElevenLabs / Google TTS / Edge TTS / OpenAI TTS.**
+> 11 paragraphs, one per shot. Pauses are baked in by punctuation. Target ~150 wpm.
+
+```
+Soulprint. A living AI dossier for your wallet. Built on Somnia, with on-chain AI
+agents that read a wallet's history and write a witty dossier — minted as a soulbound NFT.
+
+Watch a mint. Paste any wallet — yours, or someone else's — and click Read.
+
+A Somnia JSON API agent fetches the wallet's on-chain activity. The on-chain LLM —
+Qwen-3 30B, running across validators with consensus-verified output — writes the
+dossier. End to end, about six seconds.
+
+It mints as a soulbound NFT. ERC-5192 — can't be sold, can't be transferred. Every
+wallet has a Stage from one to ten and one of thirty spirit forms, derived from real
+on-chain activity and stored on-chain.
+
+Here's the part most "AI on-chain" projects skip — sustainability. Every Soulprint
+carries its own prepaid evolution fuel. The mint paid for one autonomous evolution.
+After that, the soul freezes — until someone tops it up.
+
+And anyone can keep any soul alive. I top this one up with one STT. The fuel locks
+into the soul — the contract owner can never withdraw it. Boost a friend. Boost a
+stranger. Keeping a soul alive becomes a public good.
+
+The dashboard shows the whole ecosystem. Soulprints minted, autonomous evolutions
+counted, leaderboard ranked by on-chain activity.
+
+Now — the autonomy proof. SoulprintCron is a Somnia Reactivity handler. On each
+scheduled tick, the handler calls evolveBatch and then schedules the next tick —
+inside the same handler. The chain ticks the contract on time, forever. No keeper
+bot. No webhook.
+
+Every tick comes from the Somnia Reactivity precompile — address zero-zero-zero-zero-zero-zero-one-hundred.
+Not from a human wallet. The previous live cron reached thirty-five ticks. Two real
+evolutions. Zero human transactions between them.
+
+And here is the contract owner's address. Look at the outgoing transactions. Zero
+of them go to the cron. The autonomy is real — verifiable on the explorer.
+
+And Soulprint is not just an NFT — it's a primitive other contracts read. profileOf,
+traitsOf, evolutionOf, evolutionFuel. An MCP server exposes it to any AI agent. A
+gate contract grants access by activity score. Reputation that can't be bought,
+transferred, or faked.
+
+Soulprint. Forty-seven tests green. Live on Somnia. Cost-bounded by design.
+Soulbound. Self-evolving. Mint once — it evolves forever.
+```
+
+Word count ≈ 380. At 150 wpm = ~152 seconds. Fits 2:30 with ~10s breathing room.
+
+---
+
+## 4. Generate TTS audio
+
+| Tool | Cost | Voice | Notes |
 |---|---|---|---|
-| **ElevenLabs** (recommended) | Free tier covers ~10 min/mo | "Adam" or "Brian" (neutral male tech) | Best quality. Stability `70%`, similarity `70%`. Export MP3 44.1kHz. |
-| **Google Cloud Text-to-Speech** | Free tier 4M chars/mo | `en-US-Neural2-J` (male) or `en-US-Neural2-D` | Need a Google Cloud account. Excellent quality. |
-| **Edge TTS** (via `edge-tts` Python pkg) | Free, unlimited | `en-US-AndrewNeural` or `en-US-EricNeural` | Free, no signup. Slightly more robotic than ElevenLabs. |
-| **OpenAI TTS** (`tts-1-hd`) | $0.030/1k chars (~$0.014 for this script) | "onyx" or "echo" | Solid, costs a couple cents. |
+| **ElevenLabs** (recommended) | Free tier ~10 min/mo | "Adam" or "Brian" | Stability 70%, Similarity 70%. Export MP3 44.1kHz. |
+| **OpenAI TTS** `tts-1-hd` | ~$0.012 for this script | "onyx" or "echo" | Solid quality, near-free cost. |
+| **Edge TTS** (free, unlimited) | $0 | `en-US-AndrewNeural` | Use the free `edge-tts` Python package. Slightly more robotic. |
+| **Google Cloud TTS** | 4M chars/mo free | `en-US-Neural2-J` (male) | Excellent. Needs a GCP account. |
 
-Steps (works for any of the above):
-1. Paste **section B** (the narration text) verbatim — INCLUDING the `[X:XX section]` tags. Most TTS engines just ignore square-bracketed lines, but if your tool tries to read them, strip them first.
-2. Export as **MP3 or WAV, 44.1 kHz, mono is fine**.
-3. Save as `narration.mp3` next to your video file.
+After export, play it back with a stopwatch. Should be **145–160 seconds**. If too fast → set speed to 0.95×. If too slow → 1.05× or trim the longest pause.
 
-Sanity check after export: play it back, time it with a stopwatch. Should be 165–180 seconds. If it's <160s, your TTS is too fast — lower speed to 0.95×. If it's >185s, speed up to 1.05× or trim the longest pause.
+Save as `narration.mp3` next to your video file.
 
 ---
 
-## F. Mix audio + video (free, ~15 minutes)
-
-Use **CapCut Desktop** (free, capcut.com, mac/win). Simpler than DaVinci Resolve for this job.
+## 5. Mix audio + video (CapCut Desktop, free, ~15 minutes)
 
 1. **New project → 1080p 30fps.**
-2. **Import** your `recording.mp4` and `narration.mp3`.
-3. Drag the video onto the timeline (top track). Drag the narration onto the audio track below.
-4. **Sync the start:** align the first frame of narration audio with the first frame of meaningful video (around 0:00). If you left 2s of dead air at the start, drag narration to begin at +2s.
-5. **Walk shot-by-shot down the table in C.** For each `[X:XX]` cue in the narration, check that the corresponding video shot is on screen. If a shot is too short, slow it down (right-click clip → Speed → 0.9×). If too long, trim the end with the scissors tool.
-6. **Mute the original video audio** (right-click video clip → Volume → 0%).
-7. **Export:** `1080p 30fps, H.264, Higher bitrate, AAC audio`. File size should be 20–60 MB for a 3-min video.
+2. Import `recording.mp4` and `narration.mp3`.
+3. Video on top track, narration on audio track.
+4. **Align starts**: drag narration so first syllable matches the first meaningful frame.
+5. **Walk shot-by-shot down section 2**: at each `[X:XX]` cue, verify the right shot is on screen. Trim video clips that ran too long (scissors tool); slow-down (right-click → Speed 0.9×) any that ended too early.
+6. **Mute the original video audio**: right-click video → Volume → 0%.
+7. **Export**: `1080p 30fps, H.264, High bitrate, AAC audio`. File size 20–60 MB.
 
-Sync hiccups that will happen and how to fix:
-- *"Narration ends 3 seconds before video"* → trim the final hold-shot.
-- *"Narration is ahead of the visual"* → slow down the offending shot (Speed 0.9×) or insert a brief still frame.
-- *"MetaMask shot took longer than 8 seconds"* → split the video clip right after the confirm closes, delete the dead portion in the middle.
-
----
-
-## G. Upload & submit
-
-1. **YouTube:** upload as **Unlisted** (so only people with the link can see it). Title: `Soulprint — Encode × Somnia Agentathon submission`. Description: paste the README's "60-second pitch" section + the GitHub link.
-2. **Update `README.md`** line 14: replace `_<link — 2–5 min walkthrough>_` with the YouTube URL.
-3. Commit + push (`docs: add demo video link`).
-4. **Encode dashboard:** paste the YouTube link and the GitHub link in the submission form.
+Sync hiccups and fixes:
+- Narration runs out before video → trim final shot.
+- Narration is ahead of visual → slow down the offending shot.
+- MetaMask popup took 12 sec instead of 8 → split the clip, delete the dead middle.
 
 ---
 
-## H. What I do while you record (real-time support)
+## 6. Upload & submit
 
-If we coordinate (Telegram / quick chat), I can:
-- Hit `setCronParams.ts` to re-arm the schedule **right before** you press record, so a tick lands in your autonomy window (around 1:55–2:30 in the shot list).
-- Trigger an evolution manually (`reread` or `evolveBatch`) right before your "transformation" section (2:35) so the form change is FRESH when you hard-refresh.
-- Watch `watchCron.ts` in parallel and tell you "tick incoming in 12 seconds" so you can pace shot F to land on it.
+1. **YouTube**: upload as **Unlisted**. Title: `Soulprint — Encode × Somnia Agentathon`. Description: the 60-second pitch from README + GitHub link.
+2. **README**: replace the `<link — 2–5 min walkthrough>` placeholder with the YouTube URL. Commit + push.
+3. **Encode form**: paste the YouTube link into "Link to Demo Video".
 
-Tell me when you're 5 minutes from recording and what tweaks you want pre-staged.
+Done. All 7 Required fields closed.
+
+---
+
+## 7. While you record — what I can do in parallel
+
+Tell me when you're 5 minutes from pressing record. I will:
+- Speed cron to 60s ticks (`DEMO=1 setCronParams.ts`)
+- Bump burner tx_count to guarantee an evolution lands mid-recording (`N=30 bumpTxCount.ts`)
+- Watch `watchCron.ts` from my side and tell you "tick incoming in 15 seconds" so you can land shot **[1:10 – 1:35]** on a live tick
+- Be ready to manually trigger an evolution (`reread` or `evolveBatch`) just before your "Boost → fuel refill" shot, in case the cron is sluggish
+
+After you finish: I'll reset cron to 30-min cadence (`DEMO=0 setCronParams.ts`).
