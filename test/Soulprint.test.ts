@@ -325,20 +325,23 @@ describe("Soulprint", () => {
     expect(await soulprint.read.activityScore([tokenId])).to.equal(80n); // 250 -> 200..999 bucket
   });
 
-  it("evolveBatch skips (no revert) when the reserve can't fund a pipeline", async () => {
-    const { soulprint, platform, user, deployer } = await deploy();
-    const pub = await hre.viem.getPublicClient();
+  it("evolveBatch pauses (no revert) when a soul is out of fuel", async () => {
+    const { soulprint, platform, user } = await deploy();
     await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
     await platform.write.deliver([1n, statsResult(87n), Success]);
     await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
     const tokenId = await soulprint.read.soulprintOf([user.account.address]);
 
-    // drain the reserve so a full pipeline can't be funded
-    const bal = await pub.getBalance({ address: soulprint.address });
-    await soulprint.write.withdraw([bal], { account: deployer.account });
+    // Burn through the initial fuel grant with one real evolution (tx_count changed).
+    await soulprint.write.evolveBatch([1n]);
+    await platform.write.deliver([3n, statsResult(200n), Success]);
+    await platform.write.deliver([4n, dossierResult(SAMPLE_DOSSIER), Success]);
+    expect(await soulprint.read.evoBalance([tokenId])).to.equal(0n); // fuel exhausted
+    expect(await soulprint.read.generation([tokenId])).to.equal(2n);
 
-    await soulprint.write.evolveBatch([1n]); // must not revert
-    expect(await soulprint.read.generation([tokenId])).to.equal(1n); // unchanged (skipped)
+    // Out of fuel → cron tick pauses the soul (no revert, no generation bump).
+    await soulprint.write.evolveBatch([1n]);
+    expect(await soulprint.read.generation([tokenId])).to.equal(2n);
   });
 
   it("evolveBatch advances a round-robin cursor across wallets", async () => {
@@ -508,5 +511,114 @@ describe("Soulprint", () => {
     );
     expect(traits.Stage).to.equal(7);
     expect(traits.Form).to.equal("deployer-3-forge-specter");
+  });
+
+  // ─── Prepaid Evolution Fuel ──────────────────────────────────────────────
+  // Caps the project's "forever-cost" from autonomous ticks and turns "keep this
+  // soul alive" into a public-good mechanic (anyone can top up anyone's soul).
+
+  it("grants INITIAL_FUEL_GRANT to a new soulprint on mint", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+
+    expect(await soulprint.read.evoBalance([tokenId])).to.equal(parseEther("0.4"));
+    expect(await soulprint.read.totalReserved()).to.equal(parseEther("0.4"));
+
+    const fuel = await soulprint.read.evolutionFuel([tokenId]);
+    expect(fuel[0]).to.equal(parseEther("0.4"));    // balance
+    expect(fuel[1]).to.equal(parseEther("0.4"));    // costPerEvolution
+    expect(fuel[2]).to.equal(1n);                   // evolutionsRemaining
+  });
+
+  it("topUpEvolution accepts STT from anyone and bumps the per-token fuel", async () => {
+    const { soulprint, platform, user, deployer } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+
+    // A third party (deployer here) tops up someone else's soul — patronage / boost.
+    await soulprint.write.topUpEvolution([tokenId], { value: parseEther("1.6"), account: deployer.account });
+
+    expect(await soulprint.read.evoBalance([tokenId])).to.equal(parseEther("2.0"));   // 0.4 + 1.6
+    expect(await soulprint.read.totalReserved()).to.equal(parseEther("2.0"));
+    const fuel = await soulprint.read.evolutionFuel([tokenId]);
+    expect(fuel[2]).to.equal(5n); // 2.0 / 0.4 = 5 evolutions
+  });
+
+  it("topUpEvolution rejects non-existent tokens and zero value", async () => {
+    const { soulprint, user } = await deploy();
+    await expect(
+      soulprint.write.topUpEvolution([99n], { value: parseEther("1"), account: user.account })
+    ).to.be.rejected;
+    await expect(
+      soulprint.write.topUpEvolution([1n], { value: 0n, account: user.account })
+    ).to.be.rejected;
+  });
+
+  it("withdraw cannot dip into per-token fuel (totalReserved is sacred)", async () => {
+    const { soulprint, platform, user, deployer } = await deploy();
+    const pub = await hre.viem.getPublicClient();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+
+    const bal = await pub.getBalance({ address: soulprint.address });
+    const drainable = await soulprint.read.availableForWithdraw();
+    expect(drainable).to.equal(bal - parseEther("0.4")); // 0.4 STT fuel is reserved
+
+    // Trying to withdraw EVERYTHING reverts; only `availableForWithdraw` is fair game.
+    await expect(
+      soulprint.write.withdraw([bal], { account: deployer.account })
+    ).to.be.rejected;
+    await soulprint.write.withdraw([drainable], { account: deployer.account });
+    expect(await pub.getBalance({ address: soulprint.address })).to.equal(parseEther("0.4"));
+  });
+
+  it("fueled cron tick re-fills generation and decrements fuel; second tick pauses without revert", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+
+    // Tick 1: tx_count changed → real evolution, fuel consumed.
+    await soulprint.write.evolveBatch([1n]);
+    await platform.write.deliver([3n, statsResult(250n), Success]);
+    await platform.write.deliver([4n, dossierResult(SAMPLE_DOSSIER), Success]);
+    expect(await soulprint.read.generation([tokenId])).to.equal(2n);
+    expect(await soulprint.read.evoBalance([tokenId])).to.equal(0n);
+
+    // Tick 2: no fuel → pre-filter pauses (no JSON request fired, no revert).
+    await soulprint.write.evolveBatch([1n]); // must not revert
+    expect(await soulprint.read.generation([tokenId])).to.equal(2n); // unchanged
+
+    // After topUp, the next tick can evolve again.
+    await soulprint.write.topUpEvolution([tokenId], { value: parseEther("0.4"), account: user.account });
+    await soulprint.write.evolveBatch([1n]);
+    // 3 requests have been fired so far (initial JSON+LLM, tick-1 JSON+LLM, tick-3 JSON);
+    // platform's request counter is 5n now.
+    await platform.write.deliver([5n, statsResult(300n), Success]);
+    await platform.write.deliver([6n, dossierResult(SAMPLE_DOSSIER), Success]);
+    expect(await soulprint.read.generation([tokenId])).to.equal(3n);
+  });
+
+  it("cost-gate skip (tx_count unchanged) does NOT charge fuel", async () => {
+    const { soulprint, platform, user } = await deploy();
+    await soulprint.write.read([user.account.address], { value: parseEther("1"), account: user.account });
+    await platform.write.deliver([1n, statsResult(87n), Success]);
+    await platform.write.deliver([2n, dossierResult(SAMPLE_DOSSIER), Success]);
+    const tokenId = await soulprint.read.soulprintOf([user.account.address]);
+    const fuelBefore = await soulprint.read.evoBalance([tokenId]);
+
+    // Idle tick — tx_count unchanged. Should EvolutionSkipped, NOT EvolutionPaused.
+    await soulprint.write.evolveBatch([1n]);
+    await platform.write.deliver([3n, statsResult(87n), Success]); // same tx_count
+
+    expect(await soulprint.read.evoBalance([tokenId])).to.equal(fuelBefore); // fuel intact
+    expect(await soulprint.read.generation([tokenId])).to.equal(1n);
   });
 });

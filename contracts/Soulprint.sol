@@ -23,6 +23,15 @@ contract Soulprint is ERC721 {
     uint256 public constant LLM_PRICE_PER_AGENT = 0.07 ether;
     uint256 public constant MINT_PRICE = 1 ether;            // profiling your OWN wallet
     uint256 public constant PROFILE_OTHER_PRICE = 2 ether;   // profiling someone else's wallet
+    // ── Prepaid Evolution Fuel ─────────────────────────────────────────────
+    // Each Soulprint has a per-token STT balance that funds its future re-evolutions.
+    // Cron only evolves a soul if its fuel covers the cost; runs out → soul freezes
+    // at its last form (anyone can revive it via topUpEvolution). Caps the project's
+    // forever-cost from the autonomous tick and turns "keep this soul alive" into a
+    // social mechanic — see docs/economics.md. EVOLUTION_COST is an overestimate of
+    // actual agent fees (~0.3 STT for JSON + LLM); the surplus stays in the contract.
+    uint256 public constant EVOLUTION_COST     = 0.4 ether;
+    uint256 public constant INITIAL_FUEL_GRANT = 0.4 ether;  // ~1 evolution included with mint
 
     enum Stage { None, Stats, Dossier }
 
@@ -44,6 +53,8 @@ contract Soulprint is ERC721 {
     mapping(uint256 => uint8)   public formIdOf;      // tokenId -> spirit form 1..30 (see _formSlug)
     mapping(address => uint256) public paidByWallet;  // escrowed mint amount
     mapping(address => bool)    public pendingRead;   // wallet -> a pipeline is in flight
+    mapping(uint256 => uint256) public evoBalance;    // tokenId -> STT reserved for future evolutions
+    uint256 public totalReserved;                     // sum(evoBalance) — withdraw() never dips into this
     address[] public registeredWallets;
     uint256 public totalSoulprints;
     uint256 public freeMintsRemaining = 100;
@@ -55,6 +66,8 @@ contract Soulprint is ERC721 {
     event Locked(uint256 tokenId);
     event ProfileRequested(address indexed requester, address indexed wallet);
     event EvolutionSkipped(uint256 indexed tokenId);
+    event EvolutionPaused(uint256 indexed tokenId, uint256 balance); // out of fuel
+    event ToppedUp(uint256 indexed tokenId, address indexed by, uint256 amount, uint256 newBalance);
     event RefundFailed(address indexed wallet, uint256 amount);
 
     constructor(address platform_) ERC721("Soulprint", "SOUL") {
@@ -64,11 +77,45 @@ contract Soulprint is ERC721 {
 
     /// @notice Owner-only sweep of the contract's STT reserve. Lets us recycle the
     /// agent-call / Reactivity-subscription reserve into the next deployment instead
-    /// of re-funding from scratch on every redeploy.
+    /// of re-funding from scratch on every redeploy. **Never** dips into the
+    /// `totalReserved` slice — that's the fuel users / boosters prepaid for specific
+    /// tokens, and is sacred until those evolutions actually run.
     function withdraw(uint256 amount) external {
         require(msg.sender == owner, "not owner");
+        require(amount <= availableForWithdraw(), "exceeds available");
         (bool ok, ) = payable(owner).call{value: amount}("");
         require(ok, "withdraw failed");
+    }
+
+    /// @notice STT the owner can withdraw — everything in the contract balance EXCEPT
+    /// the per-token fuel `totalReserved` for prepaid future evolutions.
+    function availableForWithdraw() public view returns (uint256) {
+        uint256 bal = address(this).balance;
+        return bal > totalReserved ? bal - totalReserved : 0;
+    }
+
+    /// @notice Top up a Soulprint's evolution fuel. ANYONE can call (owner, fan, friend,
+    /// patron contract) — keeping the soul alive becomes a public good / social mechanic.
+    /// The STT goes into the per-token `evoBalance` and is consumed only by future
+    /// re-evolutions of THIS token; never withdrawable by the contract owner.
+    function topUpEvolution(uint256 tokenId) external payable {
+        require(_ownerOf(tokenId) != address(0), "no token");
+        require(msg.value > 0, "no value");
+        evoBalance[tokenId] += msg.value;
+        totalReserved += msg.value;
+        emit ToppedUp(tokenId, msg.sender, msg.value, evoBalance[tokenId]);
+    }
+
+    /// @notice One-call fuel readout for UIs/agents: how much STT is left for this
+    /// token, the per-evolution cost, and how many full evolutions that funds.
+    function evolutionFuel(uint256 tokenId)
+        external
+        view
+        returns (uint256 balance, uint256 costPerEvolution, uint256 evolutionsRemaining)
+    {
+        balance = evoBalance[tokenId];
+        costPerEvolution = EVOLUTION_COST;
+        evolutionsRemaining = balance / EVOLUTION_COST;
     }
 
     /// @notice Owner escape hatch: clear a stuck `pendingRead` flag if an agent request
@@ -177,10 +224,21 @@ contract Soulprint is ERC721 {
         // and bump `generation` when the wallet's on-chain activity actually changed. The LLM
         // is deterministic, so an unchanged tx count would just reproduce the same dossier.
         uint256 existingId = soulprintOf[ctx.wallet];
-        if (existingId != 0 && txCount == txCountOf[existingId]) {
-            pendingRead[ctx.wallet] = false;
-            emit EvolutionSkipped(existingId);
-            return;
+        if (existingId != 0) {
+            if (txCount == txCountOf[existingId]) {
+                pendingRead[ctx.wallet] = false;
+                emit EvolutionSkipped(existingId);
+                return;
+            }
+            // Fuel-gated evolution: the prepaid balance must cover this evolution. Out of
+            // fuel = soul freezes at its current form until anyone calls topUpEvolution().
+            if (evoBalance[existingId] < EVOLUTION_COST) {
+                pendingRead[ctx.wallet] = false;
+                emit EvolutionPaused(existingId, evoBalance[existingId]);
+                return;
+            }
+            evoBalance[existingId] -= EVOLUTION_COST;
+            totalReserved -= EVOLUTION_COST;
         }
 
         _requestDossier(ctx.wallet, txCount);
@@ -244,6 +302,11 @@ contract Soulprint is ERC721 {
             soulprintOf[ctx.wallet] = tokenId;
             registeredWallets.push(ctx.wallet);
             _mint(ctx.wallet, tokenId); // _mint (not _safeMint): soulprints may target contract addresses too; token is soulbound
+            // Seed the per-token evolution fuel — the mint price already paid for it.
+            // This grant is what makes the cron's first re-evolution of this soul autonomous;
+            // beyond that the owner/fans must top up (cron will emit EvolutionPaused otherwise).
+            evoBalance[tokenId] = INITIAL_FUEL_GRANT;
+            totalReserved += INITIAL_FUEL_GRANT;
             emit SoulprintMinted(ctx.wallet, tokenId);
             emit Locked(tokenId);
 
@@ -479,10 +542,14 @@ contract Soulprint is ERC721 {
         uint256 cursor = evolveCursor;
         for (uint256 i = 0; i < count; i++) {
             address wallet = registeredWallets[cursor];
-            if (!pendingRead[wallet] && address(this).balance >= needed) {
+            uint256 tid = soulprintOf[wallet];
+            // Pre-filter: don't waste the JSON poll (~0.09 STT) on a frozen soul.
+            if (evoBalance[tid] < EVOLUTION_COST) {
+                emit EvolutionPaused(tid, evoBalance[tid]);
+            } else if (!pendingRead[wallet] && address(this).balance >= needed) {
                 _requestStats(wallet); // handleDossier updates in place (soulprintOf != 0)
             } else {
-                emit EvolutionSkipped(soulprintOf[wallet]);
+                emit EvolutionSkipped(tid);
             }
             cursor = cursor + 1 >= total ? 0 : cursor + 1;
         }
