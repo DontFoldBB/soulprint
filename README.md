@@ -11,8 +11,10 @@ on-chain Cron** — composable by any contract via `profileOf`, with no server a
 Built for the **Encode Club × Somnia Agentathon** (May–June 2026).
 
 <!-- TODO before submission: replace with a 3–6s GIF of the mint flow (paste wallet → dossier card) -->
-> 📹 **Demo video:** _<link — 2–5 min walkthrough>_ · 🔴 **Live on Somnia Shannon testnet**
-> · 🎬 Strategy + shot map: [`docs/demo-runbook.md`](docs/demo-runbook.md) · second-by-second shooting script + locked narration: [`docs/demo-recording-script.md`](docs/demo-recording-script.md)
+> 🌐 **Live frontend:** <https://soulprint-psi.vercel.app> (Vercel) · 🔴 **Live on Somnia Shannon testnet**
+> · 📹 **Demo video:** _<link — 2–5 min walkthrough>_
+> · 🎬 Shooting recipes: [`docs/demo-runbook.md`](docs/demo-runbook.md) (strategy) + [`docs/demo-recording-script.md`](docs/demo-recording-script.md) (second-by-second + locked narration)
+> · 📦 **Encode submission artifacts:** [`docs/submission/`](docs/submission/) (deck PDF, architecture SVG, copy-paste text)
 
 ---
 
