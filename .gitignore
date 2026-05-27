@@ -10,3 +10,9 @@ web/out/
 .superpowers/
 .claude/
 images/
+
+# Backstage / submission-prep — local only, never commit
+docs/submission/
+docs/demo-runbook.md
+docs/demo-recording-script.md
+outputs/
